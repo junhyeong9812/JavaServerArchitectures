@@ -1,0 +1,30 @@
+# 컴파일된 클래스 파일
+*.class
+build/
+target/
+
+# 로그 파일
+logs/
+*.log
+
+# IDE 설정 (IntelliJ는 이미 있으니 추가만)
+.vscode/
+*.swp
+*.swo
+
+# OS 파일
+.DS_Store
+Thumbs.db
+
+# 임시 파일
+*.tmp
+*.temp
+
+# 벤치마크 결과 (선택적)
+benchmarks/results/*.json
+benchmarks/results/*.csv
+
+# 빌드 중간 파일
+sources.list
+test-sources.list
+EOF
