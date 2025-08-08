@@ -1,363 +1,1191 @@
 # 개발 프로세스 (PROCESS.md)
 
-## 🎯 전체 개발 단계 개요
+## 🎯 프로젝트 전체 개요
 
-이 프로젝트는 **완전한 서블릿 컨테이너**를 세 가지 다른 아키텍처로 구현하는 대규모 학습 프로젝트입니다. 각 아키텍처별로 서블릿 구현 방식의 차이점을 깊이 이해하고, 실제 서버의 동작 원리를 파악하는 것이 목표입니다.
+**프로젝트명**: JavaServerArchitectures  
+**목표**: 순수 자바로 3가지 HTTP 서버 아키텍처 구현 및 비교  
+**개발 기간**: 9주 (2-3개월)  
+**구현 방식**: 챕터별 단계적 구현  
 
-**예상 개발 기간**: **2-3개월** (풀타임 기준)
-**학습 깊이**: 서버 아키텍처의 모든 측면을 다루는 심화 과정
+### 핵심 설계 철학
+1. **무거운 서블릿 API 버리고 HTTP 처리 본질에 집중**
+2. **3가지 아키텍처의 차이점을 명확히 드러내는 설계**
+3. **현대적 Java 기능 활용** (CompletableFuture, 람다, 스트림)
+4. **실무 연관성 극대화** (Spring, Netty, Node.js 원리 이해)
 
----
-
-## 📋 Phase 1: 서블릿 API 및 기초 인프라 구축 (4-5주)
-
-### 1.1 프로젝트 구조 설정 (1일)
-- [ ] 디렉토리 구조 생성
-- [ ] 패키지 구조 정의 (javax.servlet 패키지 구조 모방)
-- [ ] 빌드 시스템 구축 (Maven/Gradle 없이 순수 자바)
-
-### 1.2 서블릿 API 설계 및 구현 (2주)
-
-#### 1.2.1 핵심 서블릿 인터페이스
-- [ ] `Servlet` 인터페이스 (init, service, destroy)
-- [ ] `GenericServlet` 추상 클래스
-- [ ] `HttpServlet` 추상 클래스 (doGet, doPost, doPut, doDelete)
-- [ ] `ServletConfig` 인터페이스 (서블릿 설정)
-- [ ] `ServletContext` 인터페이스 (애플리케이션 컨텍스트)
-
-#### 1.2.2 HTTP 요청/응답 API
-- [ ] `ServletRequest` / `HttpServletRequest` 인터페이스
-    - 헤더, 파라미터, 바디 처리
-    - 세션, 쿠키 접근
-    - 파일 업로드 지원
-- [ ] `ServletResponse` / `HttpServletResponse` 인터페이스
-    - 상태코드, 헤더 설정
-    - 출력 스트림 관리
-    - 쿠키 설정
-
-#### 1.2.3 비동기 처리 API (Hybrid, EventLoop용)
-- [ ] `AsyncContext` 인터페이스
-- [ ] `AsyncListener` 인터페이스
-- [ ] `AsyncEvent` 클래스
-
-### 1.3 HTTP 프로토콜 완전 구현 (1.5주)
-
-#### 1.3.1 HTTP 파서 구현
-- [ ] `HttpRequestParser` 클래스
-    - Request Line 파싱 (Method, URI, Version)
-    - Header 파싱 및 저장
-    - Body 파싱 (Form, JSON, Multipart)
-- [ ] `HttpResponseBuilder` 클래스
-    - 응답 헤더 생성
-    - 바디 인코딩 처리
-    - Keep-alive 연결 관리
-
-#### 1.3.2 고급 HTTP 기능
-- [ ] 청크 인코딩 (Chunked Encoding) 지원
-- [ ] 압축 처리 (gzip, deflate)
-- [ ] Range 요청 처리 (파일 다운로드용)
-- [ ] WebSocket 업그레이드 핸드셰이크
-
-### 1.4 서블릿 컨테이너 공통 인프라 (1주)
-
-#### 1.4.1 서블릿 라이프사이클 관리
-- [ ] `ServletRegistry` 클래스 (서블릿 등록 및 관리)
-- [ ] `ServletInstanceManager` 클래스 (인스턴스 생성/소멸)
-- [ ] `ServletLifecycleListener` 인터페이스
-
-#### 1.4.2 세션 관리
-- [ ] `HttpSession` 인터페이스 구현
-- [ ] `SessionManager` 클래스 (세션 생성/만료/정리)
-- [ ] `SessionStorage` 인터페이스 (메모리/파일 저장소)
-
-#### 1.4.3 라우팅 시스템
-- [ ] `ServletMapping` 클래스 (URL 패턴 매칭)
-- [ ] `FilterChain` 구현 (필터 체인 처리)
-- [ ] `RequestDispatcher` 구현 (forward/include)
+### 3가지 아키텍처 비교 목표
+- **Threaded**: Thread-per-Request, 블로킹 I/O
+- **Hybrid**: AsyncContext + 컨텍스트 스위칭
+- **EventLoop**: 단일 스레드 + 논블로킹 I/O
 
 ---
 
-## 📋 Phase 2: Traditional Server 구현 (2-3주)
+## 📋 Chapter 1: HTTP 코어 모듈 구현 (2주)
 
-**목표**: 표준 톰캣 스타일의 Thread-per-Request 서버 구현
+**목표**: 3가지 서버가 공통으로 사용할 HTTP 처리 핵심 모듈 구현  
+**위치**: `src/main/java/server/core/`  
+**핵심**: 간단하고 현대적인 HTTP API 설계
 
-### 2.1 Traditional 서블릿 컨테이너 (1주)
+### 1.1 HTTP 기본 클래스 구현 (3일)
 
-#### 2.1.1 핵심 컨테이너 구현
-- [ ] `TraditionalServletContainer` 클래스
-- [ ] `TraditionalHttpServletRequest` 구현
-- [ ] `TraditionalHttpServletResponse` 구현
-- [ ] 동기식 서블릿 라이프사이클 관리
-
-#### 2.1.2 스레드 관리
-- [ ] `ThreadPoolExecutor` 기반 스레드풀
-- [ ] 요청당 스레드 할당 및 관리
-- [ ] 스레드 로컬 스토리지 활용 (요청 컨텍스트)
-
-### 2.2 블로킹 I/O 처리 (1주)
-- [ ] `ServerSocket` 기반 연결 수락
-- [ ] 동기식 소켓 읽기/쓰기
-- [ ] 연결 타임아웃 관리
-- [ ] 에러 핸들링 및 복구
-
-### 2.3 고급 기능 구현 (1주)
-- [ ] Keep-alive 연결 처리
-- [ ] 파일 서빙 (정적 리소스)
-- [ ] 에러 페이지 처리
-- [ ] 로깅 시스템 통합
-
-### 2.4 테스트 및 검증 (2-3일)
-- [ ] 단위 테스트 (각 컴포넌트별)
-- [ ] 통합 테스트 (전체 요청 처리 플로우)
-- [ ] 부하 테스트 (100-500 동시 연결)
-- [ ] 메모리 누수 검증
-
----
-
-## 📋 Phase 3: 성능 측정 및 벤치마킹 도구 (1-2주)
-
-**목표**: 정밀한 성능 비교를 위한 측정 도구 및 테스트 시나리오
-
-### 3.1 벤치마킹 클라이언트 (1주)
-- [ ] `HttpBenchmarkClient` 클래스
-    - 다중 스레드 클라이언트 풀
-    - 다양한 요청 패턴 지원 (단순, I/O 집약적, CPU 집약적)
-    - 연결 재사용 및 Keep-alive 지원
-
-### 3.2 성능 메트릭 수집기 (3-4일)
-- [ ] `PerformanceProfiler` 클래스
-    - JVM 메트릭 수집 (힙, GC, 스레드)
-    - OS 레벨 메트릭 (CPU, 메모리, 네트워크)
-    - 애플리케이션 메트릭 (응답시간, 처리량, 에러율)
-
-### 3.3 테스트 시나리오 및 리포팅 (2-3일)
-- [ ] 다양한 워크로드 시나리오
-    - 단순 GET 요청 (CPU 바운드)
-    - JSON API 요청 (I/O 바운드)
-    - 파일 업로드/다운로드
-    - 데이터베이스 조회 시뮬레이션 (대기 시간)
-- [ ] 실시간 모니터링 대시보드
-- [ ] 상세 성능 리포트 생성
-
----
-
-## 📋 Phase 4: Hybrid Server 구현 (3-4주)
-
-**목표**: 톰캣 + 이벤트루프 하이브리드 아키텍처 구현
-
-### 4.1 비동기 서블릿 컨테이너 (2주)
-
-#### 4.1.1 하이브리드 컨테이너 설계
-- [ ] `HybridServletContainer` 클래스
-- [ ] `AsyncHttpServletRequest` 구현 (비동기 확장)
-- [ ] `AsyncHttpServletResponse` 구현
-- [ ] `AsyncContext` 완전 구현
-
-#### 4.1.2 컨텍스트 스위칭 매니저
-- [ ] `ContextSwitchManager` 클래스
-    - I/O 대기 감지 및 스레드 해제
-    - 비동기 작업 큐 관리
-    - 작업 완료 시 콜백 처리
-- [ ] `AsyncTaskExecutor` 클래스
-    - 백그라운드 작업 실행
-    - 타임아웃 관리 (10초 제한)
-    - 결과 콜백 처리
-
-### 4.2 스마트 스레드 관리 (1주)
-- [ ] `AdaptiveThreadPool` 클래스
-    - 동적 스레드 풀 크기 조정
-    - 작업 부하에 따른 스레드 증감
-- [ ] `ThreadContextManager` 클래스
-    - 스레드별 컨텍스트 저장/복원
-    - 세션 및 요청 상태 관리
-
-### 4.3 백프레셔 및 플로우 제어 (1주)
-- [ ] `BackpressureController` 클래스
-    - 과부하 상황 감지 및 대응
-    - 큐 크기 제한 및 거부 전략
-- [ ] `QualityOfService` 매니저
-    - 요청 우선순위 관리
-    - SLA 기반 처리 보장
-
----
-
-## 📋 Phase 5: Event Loop Server 구현 (3-4주)
-
-**목표**: 단일 스레드 이벤트루프 기반 완전 비동기 서버
-
-### 5.1 이벤트루프 아키텍처 (2주)
-
-#### 5.1.1 핵심 이벤트루프
-- [ ] `EventLoopServletContainer` 클래스
-- [ ] `EventLoop` 클래스 (NIO Selector 기반)
-- [ ] `EventQueue` 및 `EventDispatcher`
-- [ ] 논블로킹 소켓 처리
-
-#### 5.1.2 비동기 서블릿 API
-- [ ] `AsyncHttpServletRequest` (CompletableFuture 기반)
-- [ ] `AsyncHttpServletResponse` (스트리밍 지원)
-- [ ] `EventDrivenServlet` 추상 클래스
-
-### 5.2 고급 비동기 패턴 (1-2주)
-- [ ] `CompletableFuture` 체인 관리
-- [ ] 비동기 파일 I/O 처리
-- [ ] 비동기 데이터베이스 커넥션 풀
-- [ ] 웹소켓 지원 (업그레이드 프로토콜)
-
-### 5.3 에러 핸들링 및 복구 (3-4일)
-- [ ] 비동기 예외 처리 메커니즘
-- [ ] 데드락 감지 및 복구
-- [ ] 서킷 브레이커 패턴 구현
-
----
-
-## 📋 Phase 6: 고급 기능 및 최적화 (2-3주)
-
-### 6.1 성능 최적화
-- [ ] 제로 카피 I/O (FileChannel.transferTo)
-- [ ] 객체 풀링 (요청/응답 객체 재사용)
-- [ ] JIT 컴파일러 최적화 고려
-- [ ] GC 튜닝 및 메모리 최적화
-
-### 6.2 모니터링 및 관리
-- [ ] JMX 기반 관리 인터페이스
-- [ ] 실시간 메트릭 수집 및 알림
-- [ ] 헬스체크 및 프로브 엔드포인트
-- [ ] 설정 동적 변경 지원
-
-### 6.3 보안 기능
-- [ ] HTTPS/TLS 지원
-- [ ] 요청 크기 제한 및 DoS 방어
-- [ ] 인증 및 인가 프레임워크
-- [ ] 보안 헤더 자동 추가
-
----
-
-## 📋 Phase 7: 종합 테스트 및 분석 (1-2주)
-
-### 7.1 통합 성능 벤치마크
-- [ ] 동일 조건 하 세 서버 비교
-- [ ] 다양한 워크로드 시나리오 테스트
-- [ ] 장기간 안정성 테스트 (24시간 이상)
-- [ ] 메모리 누수 및 리소스 누수 검증
-
-### 7.2 결과 분석 및 문서화
-- [ ] 상세 성능 비교 리포트
-- [ ] 각 아키텍처의 장단점 분석
-- [ ] 사용 케이스별 권장사항
-- [ ] 학습한 내용 정리 및 공유
-
----
-
-## 🎯 각 아키텍처별 서블릿 구현 차이점
-
-### 1. Traditional Server
+#### HttpMethod.java
 ```java
-public class TraditionalServlet extends HttpServlet {
-    @Override
-    protected void doGet(HttpServletRequest req, HttpServletResponse resp) {
-        // 동기식 처리 - 스레드가 완료까지 블로킹
-        String result = performDatabaseQuery(); // 블로킹 호출
-        resp.getWriter().write(result);
-        // 스레드가 전체 처리 완료까지 점유
+package server.core.http;
+
+public enum HttpMethod {
+    GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS, TRACE;
+    
+    public static HttpMethod fromString(String method) {
+        try {
+            return valueOf(method.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Unsupported HTTP method: " + method);
+        }
     }
 }
 ```
 
-### 2. Hybrid Server
+#### HttpStatus.java
 ```java
-public class HybridServlet extends HttpServlet {
-    @Override
-    protected void doGet(HttpServletRequest req, HttpServletResponse resp) {
-        AsyncContext asyncContext = req.startAsync();
-        
-        // I/O 작업을 별도 스레드로 위임, 현재 스레드는 해제
-        CompletableFuture.supplyAsync(() -> performDatabaseQuery())
-            .thenAccept(result -> {
-                try {
-                    resp.getWriter().write(result);
-                    asyncContext.complete(); // 비동기 완료
-                } catch (IOException e) {
-                    asyncContext.complete();
+package server.core.http;
+
+public enum HttpStatus {
+    // 2xx Success
+    OK(200, "OK"),
+    CREATED(201, "Created"),
+    NO_CONTENT(204, "No Content"),
+    
+    // 3xx Redirection  
+    MOVED_PERMANENTLY(301, "Moved Permanently"),
+    FOUND(302, "Found"),
+    
+    // 4xx Client Error
+    BAD_REQUEST(400, "Bad Request"),
+    NOT_FOUND(404, "Not Found"),
+    METHOD_NOT_ALLOWED(405, "Method Not Allowed"),
+    
+    // 5xx Server Error
+    INTERNAL_SERVER_ERROR(500, "Internal Server Error"),
+    NOT_IMPLEMENTED(501, "Not Implemented"),
+    SERVICE_UNAVAILABLE(503, "Service Unavailable");
+    
+    private final int code;
+    private final String reasonPhrase;
+    
+    HttpStatus(int code, String reasonPhrase) {
+        this.code = code;
+        this.reasonPhrase = reasonPhrase;
+    }
+    
+    public int getCode() { return code; }
+    public String getReasonPhrase() { return reasonPhrase; }
+    
+    public static HttpStatus fromCode(int code) {
+        for (HttpStatus status : values()) {
+            if (status.code == code) return status;
+        }
+        throw new IllegalArgumentException("Unknown status code: " + code);
+    }
+}
+```
+
+#### HttpHeaders.java
+```java
+package server.core.http;
+
+import java.util.*;
+
+public class HttpHeaders {
+    private final Map<String, List<String>> headers = new LinkedHashMap<>();
+    
+    public void add(String name, String value) {
+        headers.computeIfAbsent(name.toLowerCase(), k -> new ArrayList<>()).add(value);
+    }
+    
+    public void set(String name, String value) {
+        List<String> values = new ArrayList<>();
+        values.add(value);
+        headers.put(name.toLowerCase(), values);
+    }
+    
+    public String getFirst(String name) {
+        List<String> values = headers.get(name.toLowerCase());
+        return values != null && !values.isEmpty() ? values.get(0) : null;
+    }
+    
+    public List<String> get(String name) {
+        return headers.getOrDefault(name.toLowerCase(), Collections.emptyList());
+    }
+    
+    public Set<String> getNames() {
+        return headers.keySet();
+    }
+    
+    public int size() {
+        return headers.size();
+    }
+    
+    // 자주 사용되는 헤더들을 위한 편의 메소드
+    public String getContentType() { return getFirst("content-type"); }
+    public void setContentType(String contentType) { set("content-type", contentType); }
+    
+    public String getContentLength() { return getFirst("content-length"); }
+    public void setContentLength(long length) { set("content-length", String.valueOf(length)); }
+    
+    public String getHost() { return getFirst("host"); }
+    public String getUserAgent() { return getFirst("user-agent"); }
+}
+```
+
+#### HttpRequest.java
+```java
+package server.core.http;
+
+import java.util.Map;
+import java.util.HashMap;
+
+public class HttpRequest {
+    private final HttpMethod method;
+    private final String path;
+    private final String queryString;
+    private final HttpHeaders headers;
+    private final byte[] body;
+    private final Map<String, String> pathParameters = new HashMap<>();
+    private final Map<String, Object> attributes = new HashMap<>();
+    
+    public HttpRequest(HttpMethod method, String path, String queryString, 
+                      HttpHeaders headers, byte[] body) {
+        this.method = method;
+        this.path = path;
+        this.queryString = queryString;
+        this.headers = headers;
+        this.body = body != null ? body : new byte[0];
+    }
+    
+    // Getter 메소드들
+    public HttpMethod getMethod() { return method; }
+    public String getPath() { return path; }
+    public String getQueryString() { return queryString; }
+    public HttpHeaders getHeaders() { return headers; }
+    public byte[] getBody() { return body; }
+    public String getBodyAsString() { return new String(body); }
+    
+    // 경로 파라미터 (라우팅에서 설정)
+    public void setPathParameter(String name, String value) {
+        pathParameters.put(name, value);
+    }
+    
+    public String getPathParameter(String name) {
+        return pathParameters.get(name);
+    }
+    
+    // 쿼리 파라미터 파싱
+    public Map<String, String> getQueryParameters() {
+        Map<String, String> params = new HashMap<>();
+        if (queryString != null && !queryString.isEmpty()) {
+            String[] pairs = queryString.split("&");
+            for (String pair : pairs) {
+                String[] keyValue = pair.split("=", 2);
+                if (keyValue.length == 2) {
+                    params.put(keyValue[0], keyValue[1]);
                 }
-            });
-        // doGet 메서드는 즉시 리턴, 스레드 해제
+            }
+        }
+        return params;
+    }
+    
+    // 속성 관리 (필터 체인에서 사용)
+    public void setAttribute(String name, Object value) {
+        attributes.put(name, value);
+    }
+    
+    public Object getAttribute(String name) {
+        return attributes.get(name);
     }
 }
 ```
 
-### 3. Event Loop Server
+#### HttpResponse.java
 ```java
-public class EventDrivenServlet extends AsyncServlet {
-    @Override
-    protected CompletableFuture<Void> doGetAsync(
-            AsyncHttpServletRequest req, 
-            AsyncHttpServletResponse resp) {
+package server.core.http;
+
+public class HttpResponse {
+    private HttpStatus status = HttpStatus.OK;
+    private final HttpHeaders headers = new HttpHeaders();
+    private byte[] body = new byte[0];
+    
+    // 생성자
+    public HttpResponse() {}
+    
+    public HttpResponse(HttpStatus status) {
+        this.status = status;
+    }
+    
+    // 편의 생성 메소드들
+    public static HttpResponse ok() {
+        return new HttpResponse(HttpStatus.OK);
+    }
+    
+    public static HttpResponse ok(String body) {
+        HttpResponse response = new HttpResponse(HttpStatus.OK);
+        response.setBody(body);
+        response.headers.setContentType("text/plain; charset=UTF-8");
+        return response;
+    }
+    
+    public static HttpResponse json(String json) {
+        HttpResponse response = new HttpResponse(HttpStatus.OK);
+        response.setBody(json);
+        response.headers.setContentType("application/json; charset=UTF-8");
+        return response;
+    }
+    
+    public static HttpResponse notFound() {
+        return new HttpResponse(HttpStatus.NOT_FOUND);
+    }
+    
+    public static HttpResponse serverError() {
+        return new HttpResponse(HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+    
+    // Getter/Setter 메소드들
+    public HttpStatus getStatus() { return status; }
+    public void setStatus(HttpStatus status) { this.status = status; }
+    
+    public HttpHeaders getHeaders() { return headers; }
+    
+    public byte[] getBody() { return body; }
+    public void setBody(byte[] body) { 
+        this.body = body;
+        headers.setContentLength(body.length);
+    }
+    public void setBody(String body) { 
+        setBody(body.getBytes()); 
+    }
+    
+    public String getBodyAsString() { return new String(body); }
+}
+```
+
+### 1.2 HTTP 파서 구현 (2일)
+
+#### HttpParser.java
+```java
+package server.core.http;
+
+import java.io.*;
+import java.nio.charset.StandardCharsets;
+
+public class HttpParser {
+    
+    public static HttpRequest parseRequest(InputStream inputStream) throws IOException {
+        BufferedReader reader = new BufferedReader(
+            new InputStreamReader(inputStream, StandardCharsets.UTF_8)
+        );
         
-        // 완전 비동기 체인으로 처리
-        return performAsyncDatabaseQuery()
-            .thenCompose(result -> resp.writeAsync(result))
+        // 요청 라인 파싱 (GET /path?query HTTP/1.1)
+        String requestLine = reader.readLine();
+        if (requestLine == null || requestLine.trim().isEmpty()) {
+            throw new IOException("Invalid HTTP request: empty request line");
+        }
+        
+        String[] parts = requestLine.split(" ");
+        if (parts.length != 3) {
+            throw new IOException("Invalid HTTP request line: " + requestLine);
+        }
+        
+        HttpMethod method = HttpMethod.fromString(parts[0]);
+        String fullPath = parts[1];
+        String httpVersion = parts[2];
+        
+        // 경로와 쿼리스트링 분리
+        String path;
+        String queryString = null;
+        int queryIndex = fullPath.indexOf('?');
+        if (queryIndex != -1) {
+            path = fullPath.substring(0, queryIndex);
+            queryString = fullPath.substring(queryIndex + 1);
+        } else {
+            path = fullPath;
+        }
+        
+        // 헤더 파싱
+        HttpHeaders headers = new HttpHeaders();
+        String headerLine;
+        while ((headerLine = reader.readLine()) != null && !headerLine.trim().isEmpty()) {
+            int colonIndex = headerLine.indexOf(':');
+            if (colonIndex != -1) {
+                String name = headerLine.substring(0, colonIndex).trim();
+                String value = headerLine.substring(colonIndex + 1).trim();
+                headers.add(name, value);
+            }
+        }
+        
+        // 바디 읽기
+        byte[] body = readBody(reader, headers);
+        
+        return new HttpRequest(method, path, queryString, headers, body);
+    }
+    
+    private static byte[] readBody(BufferedReader reader, HttpHeaders headers) throws IOException {
+        String contentLengthStr = headers.getContentLength();
+        if (contentLengthStr == null) {
+            return new byte[0];
+        }
+        
+        try {
+            int contentLength = Integer.parseInt(contentLengthStr);
+            if (contentLength <= 0) {
+                return new byte[0];
+            }
+            
+            char[] buffer = new char[contentLength];
+            int totalRead = 0;
+            while (totalRead < contentLength) {
+                int read = reader.read(buffer, totalRead, contentLength - totalRead);
+                if (read == -1) break;
+                totalRead += read;
+            }
+            
+            return new String(buffer, 0, totalRead).getBytes(StandardCharsets.UTF_8);
+        } catch (NumberFormatException e) {
+            throw new IOException("Invalid Content-Length header: " + contentLengthStr);
+        }
+    }
+}
+```
+
+#### HttpBuilder.java
+```java
+package server.core.http;
+
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+
+public class HttpBuilder {
+    
+    public static byte[] buildResponse(HttpResponse response) {
+        try {
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            
+            // 상태 라인 작성
+            String statusLine = String.format("HTTP/1.1 %d %s\r\n", 
+                response.getStatus().getCode(), 
+                response.getStatus().getReasonPhrase());
+            baos.write(statusLine.getBytes(StandardCharsets.UTF_8));
+            
+            // 헤더 작성
+            HttpHeaders headers = response.getHeaders();
+            for (String name : headers.getNames()) {
+                for (String value : headers.get(name)) {
+                    String headerLine = name + ": " + value + "\r\n";
+                    baos.write(headerLine.getBytes(StandardCharsets.UTF_8));
+                }
+            }
+            
+            // 헤더와 바디 구분자
+            baos.write("\r\n".getBytes(StandardCharsets.UTF_8));
+            
+            // 바디 작성
+            if (response.getBody().length > 0) {
+                baos.write(response.getBody());
+            }
+            
+            return baos.toByteArray();
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to build HTTP response", e);
+        }
+    }
+}
+```
+
+### 1.3 라우팅 시스템 구현 (2일)
+
+#### RouteHandler.java
+```java
+package server.core.routing;
+
+import server.core.http.HttpRequest;
+import server.core.http.HttpResponse;
+import java.util.concurrent.CompletableFuture;
+
+@FunctionalInterface
+public interface RouteHandler {
+    CompletableFuture<HttpResponse> handle(HttpRequest request);
+    
+    // 편의 메소드: 동기식 핸들러를 비동기로 래핑
+    static RouteHandler sync(SyncRouteHandler syncHandler) {
+        return request -> CompletableFuture.completedFuture(syncHandler.handle(request));
+    }
+}
+
+@FunctionalInterface
+interface SyncRouteHandler {
+    HttpResponse handle(HttpRequest request);
+}
+```
+
+#### Route.java
+```java
+package server.core.routing;
+
+import server.core.http.HttpMethod;
+import java.util.regex.Pattern;
+import java.util.regex.Matcher;
+import java.util.Map;
+import java.util.HashMap;
+
+public class Route {
+    private final HttpMethod method;
+    private final String pattern;
+    private final Pattern compiledPattern;
+    private final RouteHandler handler;
+    private final String[] parameterNames;
+    
+    public Route(HttpMethod method, String pattern, RouteHandler handler) {
+        this.method = method;
+        this.pattern = pattern;
+        this.handler = handler;
+        this.parameterNames = extractParameterNames(pattern);
+        this.compiledPattern = compilePattern(pattern);
+    }
+    
+    public RouteMatchResult match(HttpMethod requestMethod, String path) {
+        if (!method.equals(requestMethod)) {
+            return null;
+        }
+        
+        Matcher matcher = compiledPattern.matcher(path);
+        if (!matcher.matches()) {
+            return null;
+        }
+        
+        Map<String, String> pathParams = new HashMap<>();
+        for (int i = 0; i < parameterNames.length; i++) {
+            pathParams.put(parameterNames[i], matcher.group(i + 1));
+        }
+        
+        return new RouteMatchResult(this, pathParams);
+    }
+    
+    private String[] extractParameterNames(String pattern) {
+        // 패턴에서 {id}, {name} 같은 파라미터 추출
+        return pattern.replaceAll("\\{([^}]+)\\}", "$1").split("/");
+    }
+    
+    private Pattern compilePattern(String pattern) {
+        // {id} -> ([^/]+) 형태로 정규식 변환
+        String regex = pattern.replaceAll("\\{[^}]+\\}", "([^/]+)");
+        return Pattern.compile("^" + regex + "$");
+    }
+    
+    public RouteHandler getHandler() { return handler; }
+    public HttpMethod getMethod() { return method; }
+    public String getPattern() { return pattern; }
+}
+```
+
+#### RouteMatchResult.java
+```java
+package server.core.routing;
+
+import java.util.Map;
+
+public class RouteMatchResult {
+    private final Route route;
+    private final Map<String, String> pathParameters;
+    
+    public RouteMatchResult(Route route, Map<String, String> pathParameters) {
+        this.route = route;
+        this.pathParameters = pathParameters;
+    }
+    
+    public Route getRoute() { return route; }
+    public Map<String, String> getPathParameters() { return pathParameters; }
+}
+```
+
+#### Router.java
+```java
+package server.core.routing;
+
+import server.core.http.*;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.concurrent.CompletableFuture;
+
+public class Router {
+    private final List<Route> routes = new ArrayList<>();
+    
+    public void addRoute(HttpMethod method, String pattern, RouteHandler handler) {
+        routes.add(new Route(method, pattern, handler));
+    }
+    
+    // 편의 메소드들
+    public void get(String pattern, RouteHandler handler) {
+        addRoute(HttpMethod.GET, pattern, handler);
+    }
+    
+    public void post(String pattern, RouteHandler handler) {
+        addRoute(HttpMethod.POST, pattern, handler);
+    }
+    
+    public void put(String pattern, RouteHandler handler) {
+        addRoute(HttpMethod.PUT, pattern, handler);
+    }
+    
+    public void delete(String pattern, RouteHandler handler) {
+        addRoute(HttpMethod.DELETE, pattern, handler);
+    }
+    
+    public CompletableFuture<HttpResponse> route(HttpRequest request) {
+        for (Route route : routes) {
+            RouteMatchResult match = route.match(request.getMethod(), request.getPath());
+            if (match != null) {
+                // 경로 파라미터를 요청에 설정
+                for (Map.Entry<String, String> entry : match.getPathParameters().entrySet()) {
+                    request.setPathParameter(entry.getKey(), entry.getValue());
+                }
+                
+                return route.getHandler().handle(request);
+            }
+        }
+        
+        // 일치하는 라우트가 없으면 404
+        return CompletableFuture.completedFuture(HttpResponse.notFound());
+    }
+}
+```
+
+### 1.4 필터 체인 구현 (1일)
+
+#### Filter.java
+```java
+package server.core.filter;
+
+import server.core.http.HttpRequest;
+import server.core.http.HttpResponse;
+import java.util.concurrent.CompletableFuture;
+
+@FunctionalInterface
+public interface Filter {
+    CompletableFuture<HttpResponse> doFilter(HttpRequest request, FilterChain chain);
+}
+```
+
+#### FilterChain.java
+```java
+package server.core.filter;
+
+import server.core.http.HttpRequest;
+import server.core.http.HttpResponse;
+import server.core.routing.RouteHandler;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+
+public class FilterChain {
+    private final List<Filter> filters;
+    private final RouteHandler finalHandler;
+    private int currentIndex = 0;
+    
+    public FilterChain(List<Filter> filters, RouteHandler finalHandler) {
+        this.filters = filters;
+        this.finalHandler = finalHandler;
+    }
+    
+    public CompletableFuture<HttpResponse> doFilter(HttpRequest request) {
+        if (currentIndex < filters.size()) {
+            Filter filter = filters.get(currentIndex++);
+            return filter.doFilter(request, this);
+        } else {
+            // 모든 필터를 통과했으면 최종 핸들러 실행
+            return finalHandler.handle(request);
+        }
+    }
+}
+```
+
+### 1.5 미니 서블릿 API 구현 (2일)
+
+#### MiniServlet.java
+```java
+package server.core.mini;
+
+import server.core.http.HttpRequest;
+import server.core.http.HttpResponse;
+import java.util.concurrent.CompletableFuture;
+
+public interface MiniServlet {
+    
+    default void init(MiniContext context) throws Exception {
+        // 기본 구현은 아무것도 하지 않음
+    }
+    
+    CompletableFuture<HttpResponse> service(HttpRequest request);
+    
+    default void destroy() {
+        // 기본 구현은 아무것도 하지 않음
+    }
+}
+```
+
+#### MiniAsyncServlet.java
+```java
+package server.core.mini;
+
+import server.core.http.HttpRequest;
+import server.core.http.HttpResponse;
+import java.util.concurrent.CompletableFuture;
+
+public abstract class MiniAsyncServlet implements MiniServlet {
+    
+    @Override
+    public CompletableFuture<HttpResponse> service(HttpRequest request) {
+        switch (request.getMethod()) {
+            case GET:
+                return doGet(request);
+            case POST:
+                return doPost(request);
+            case PUT:
+                return doPut(request);
+            case DELETE:
+                return doDelete(request);
+            default:
+                return CompletableFuture.completedFuture(
+                    new HttpResponse(HttpStatus.METHOD_NOT_ALLOWED)
+                );
+        }
+    }
+    
+    protected CompletableFuture<HttpResponse> doGet(HttpRequest request) {
+        return methodNotAllowed();
+    }
+    
+    protected CompletableFuture<HttpResponse> doPost(HttpRequest request) {
+        return methodNotAllowed();
+    }
+    
+    protected CompletableFuture<HttpResponse> doPut(HttpRequest request) {
+        return methodNotAllowed();
+    }
+    
+    protected CompletableFuture<HttpResponse> doDelete(HttpRequest request) {
+        return methodNotAllowed();
+    }
+    
+    private CompletableFuture<HttpResponse> methodNotAllowed() {
+        return CompletableFuture.completedFuture(
+            new HttpResponse(HttpStatus.METHOD_NOT_ALLOWED)
+        );
+    }
+}
+```
+
+#### MiniContext.java
+```java
+package server.core.mini;
+
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
+public class MiniContext {
+    private final Map<String, Object> attributes = new ConcurrentHashMap<>();
+    private final Map<String, String> initParameters = new ConcurrentHashMap<>();
+    
+    // 속성 관리
+    public void setAttribute(String name, Object value) {
+        attributes.put(name, value);
+    }
+    
+    public Object getAttribute(String name) {
+        return attributes.get(name);
+    }
+    
+    public void removeAttribute(String name) {
+        attributes.remove(name);
+    }
+    
+    // 초기화 파라미터 관리
+    public void setInitParameter(String name, String value) {
+        initParameters.put(name, value);
+    }
+    
+    public String getInitParameter(String name) {
+        return initParameters.get(name);
+    }
+    
+    public Map<String, String> getInitParameters() {
+        return new HashMap<>(initParameters);
+    }
+}
+```
+
+### Chapter 1 완료 기준
+- [ ] HTTP 기본 클래스들 완전 구현 및 테스트
+- [ ] HTTP 파서로 실제 요청 파싱 가능
+- [ ] 라우팅 시스템으로 RESTful API 매핑 가능
+- [ ] 필터 체인으로 횡단 관심사 처리 가능
+- [ ] 미니 서블릿으로 간단한 웹 애플리케이션 작성 가능
+
+---
+
+## 📋 Chapter 2: Threaded 서버 구현 (1주)
+
+**목표**: 전통적인 Thread-per-Request 방식의 HTTP 서버 구현  
+**위치**: `src/main/java/threaded/`  
+**핵심**: 스레드풀 + 블로킹 I/O 방식
+
+### 2.1 기본 서버 구조 (2일)
+
+#### ThreadedServer.java
+```java
+package threaded;
+
+import server.core.routing.Router;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+public class ThreadedServer {
+    private final int port;
+    private final Router router;
+    private final ExecutorService threadPool;
+    private volatile boolean running = false;
+    private ServerSocket serverSocket;
+    
+    public ThreadedServer(int port, Router router, int threadPoolSize) {
+        this.port = port;
+        this.router = router;
+        this.threadPool = Executors.newFixedThreadPool(threadPoolSize);
+    }
+    
+    public void start() throws IOException {
+        serverSocket = new ServerSocket(port);
+        running = true;
+        
+        System.out.println("Threaded Server started on port " + port);
+        
+        while (running) {
+            try {
+                Socket clientSocket = serverSocket.accept();
+                // 요청당 스레드 할당하여 처리
+                threadPool.submit(new ThreadedRequestHandler(clientSocket, router));
+            } catch (IOException e) {
+                if (running) {
+                    System.err.println("Error accepting connection: " + e.getMessage());
+                }
+            }
+        }
+    }
+    
+    public void stop() throws IOException {
+        running = false;
+        if (serverSocket != null) {
+            serverSocket.close();
+        }
+        threadPool.shutdown();
+    }
+}
+```
+
+#### ThreadedRequestHandler.java
+```java
+package threaded;
+
+import server.core.http.*;
+import server.core.routing.Router;
+import java.net.Socket;
+import java.io.*;
+
+public class ThreadedRequestHandler implements Runnable {
+    private final Socket clientSocket;
+    private final Router router;
+    
+    public ThreadedRequestHandler(Socket clientSocket, Router router) {
+        this.clientSocket = clientSocket;
+        this.router = router;
+    }
+    
+    @Override
+    public void run() {
+        try (Socket socket = clientSocket;
+             InputStream input = socket.getInputStream();
+             OutputStream output = socket.getOutputStream()) {
+            
+            // HTTP 요청 파싱 (블로킹)
+            HttpRequest request = HttpParser.parseRequest(input);
+            
+            // 라우팅 및 처리 (블로킹)
+            HttpResponse response = router.route(request).get(); // .get()으로 블로킹
+            
+            // HTTP 응답 전송 (블로킹)
+            byte[] responseBytes = HttpBuilder.buildResponse(response);
+            output.write(responseBytes);
+            output.flush();
+            
+        } catch (Exception e) {
+            System.err.println("Error handling request: " + e.getMessage());
+        }
+    }
+}
+```
+
+### 2.2 스레드풀 관리 (1일)
+
+#### ThreadPoolManager.java
+```java
+package threaded;
+
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
+
+public class ThreadPoolManager {
+    private final ExecutorService threadPool;
+    private final ThreadPoolMonitor monitor;
+    
+    public ThreadPoolManager(int corePoolSize, int maximumPoolSize, 
+                           long keepAliveTime, TimeUnit unit) {
+        
+        ThreadPoolExecutor executor = new ThreadPoolExecutor(
+            corePoolSize,
+            maximumPoolSize,
+            keepAliveTime,
+            unit,
+            new LinkedBlockingQueue<>(),
+            new CustomThreadFactory("threaded-server"),
+            new ThreadPoolExecutor.CallerRunsPolicy() // 백프레셔 정책
+        );
+        
+        this.threadPool = executor;
+        this.monitor = new ThreadPoolMonitor(executor);
+    }
+    
+    public Future<?> submit(Runnable task) {
+        return threadPool.submit(task);
+    }
+    
+    public void shutdown() {
+        monitor.shutdown();
+        threadPool.shutdown();
+        try {
+            if (!threadPool.awaitTermination(10, TimeUnit.SECONDS)) {
+                threadPool.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            threadPool.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
+    }
+    
+    public ThreadPoolStats getStats() {
+        return monitor.getStats();
+    }
+    
+    private static class CustomThreadFactory implements ThreadFactory {
+        private final AtomicInteger threadNumber = new AtomicInteger(1);
+        private final String namePrefix;
+        
+        CustomThreadFactory(String namePrefix) {
+            this.namePrefix = namePrefix;
+        }
+        
+        @Override
+        public Thread newThread(Runnable r) {
+            Thread t = new Thread(r, namePrefix + "-" + threadNumber.getAndIncrement());
+            t.setDaemon(false);
+            return t;
+        }
+    }
+}
+```
+
+### 2.3 미니 서블릿 컨테이너 (2일)
+
+#### ThreadedMiniServletContainer.java
+```java
+package threaded;
+
+import server.core.mini.*;
+import server.core.http.*;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
+public class ThreadedMiniServletContainer {
+    private final Map<String, MiniServlet> servlets = new ConcurrentHashMap<>();
+    private final MiniContext context = new MiniContext();
+    
+    public void addServlet(String path, MiniServlet servlet) {
+        try {
+            servlet.init(context);
+            servlets.put(path, servlet);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to initialize servlet: " + path, e);
+        }
+    }
+    
+    public HttpResponse processRequest(HttpRequest request) {
+        String path = request.getPath();
+        MiniServlet servlet = findServlet(path);
+        
+        if (servlet == null) {
+            return HttpResponse.notFound();
+        }
+        
+        try {
+            // 서블릿 처리 (동기식으로 대기)
+            return servlet.service(request).get();
+        } catch (Exception e) {
+            System.err.println("Error processing servlet: " + e.getMessage());
+            return HttpResponse.serverError();
+        }
+    }
+    
+    private MiniServlet findServlet(String path) {
+        // 정확한 매치 우선
+        MiniServlet servlet = servlets.get(path);
+        if (servlet != null) {
+            return servlet;
+        }
+        
+        // 패턴 매칭 (간단한 prefix 매칭)
+        for (Map.Entry<String, MiniServlet> entry : servlets.entrySet()) {
+            String pattern = entry.getKey();
+            if (pattern.endsWith("/*") && 
+                path.startsWith(pattern.substring(0, pattern.length() - 2))) {
+                return entry.getValue();
+            }
+        }
+        
+        return null;
+    }
+    
+    public void destroy() {
+        for (MiniServlet servlet : servlets.values()) {
+            try {
+                servlet.destroy();
+            } catch (Exception e) {
+                System.err.println("Error destroying servlet: " + e.getMessage());
+            }
+        }
+        servlets.clear();
+    }
+}
+```
+
+### Chapter 2 완료 기준
+- [ ] Thread-per-Request 방식으로 동시 요청 처리
+- [ ] 스레드풀 관리 및 모니터링 기능
+- [ ] 블로킹 I/O로 요청/응답 처리
+- [ ] 미니 서블릿 컨테이너로 웹 애플리케이션 실행
+- [ ] 간단한 부하 테스트로 동작 확인
+
+---
+
+## 📋 Chapter 3: Hybrid 서버 구현 (2주)
+
+**목표**: AsyncContext 기반 컨텍스트 스위칭으로 스레드 재활용하는 서버 구현  
+**위치**: `src/main/java/hybrid/`  
+**핵심**: 스레드풀 + AsyncContext + CompletableFuture
+
+### 3.1 비동기 컨텍스트 관리 (1주)
+
+#### HybridServer.java
+```java
+package hybrid;
+
+import server.core.routing.Router;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.util.concurrent.CompletableFuture;
+
+public class HybridServer {
+    private final int port;
+    private final Router router;
+    private final AsyncContextManager asyncManager;
+    private volatile boolean running = false;
+    
+    public HybridServer(int port, Router router) {
+        this.port = port;
+        this.router = router;
+        this.asyncManager = new AsyncContextManager();
+    }
+    
+    public void start() throws IOException {
+        ServerSocket serverSocket = new ServerSocket(port);
+        running = true;
+        
+        System.out.println("Hybrid Server started on port " + port);
+        
+        while (running) {
+            Socket clientSocket = serverSocket.accept();
+            // 비동기 처리 시작
+            handleRequestAsync(clientSocket);
+        }
+    }
+    
+    private void handleRequestAsync(Socket clientSocket) {
+        CompletableFuture
+            .supplyAsync(() -> parseRequest(clientSocket))
+            .thenCompose(request -> router.route(request))
+            .thenAccept(response -> sendResponse(clientSocket, response))
             .exceptionally(throwable -> {
-                resp.setStatus(500);
+                handleError(clientSocket, throwable);
                 return null;
             });
-        // 모든 I/O가 이벤트루프에서 논블로킹으로 처리
     }
 }
 ```
 
+#### AsyncContextManager.java
+```java
+package hybrid;
+
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicLong;
+
+public class AsyncContextManager {
+    private final ExecutorService ioThreadPool;
+    private final ExecutorService cpuThreadPool;
+    private final ScheduledExecutorService timeoutExecutor;
+    private final AtomicLong activeContexts = new AtomicLong(0);
+    
+    public AsyncContextManager() {
+        this.ioThreadPool = Executors.newCachedThreadPool();
+        this.cpuThreadPool = Executors.newFixedThreadPool(
+            Runtime.getRuntime().availableProcessors()
+        );
+        this.timeoutExecutor = Executors.newScheduledThreadPool(2);
+    }
+    
+    public <T> CompletableFuture<T> executeIO(Callable<T> ioTask) {
+        activeContexts.incrementAndGet();
+        
+        return CompletableFuture
+            .supplyAsync(() -> {
+                try {
+                    return ioTask.call();
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            }, ioThreadPool)
+            .whenComplete((result, throwable) -> {
+                activeContexts.decrementAndGet();
+            });
+    }
+    
+    public <T> CompletableFuture<T> executeCPU(Callable<T> cpuTask) {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                return cpuTask.call();
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }, cpuThreadPool);
+    }
+    
+    public <T> CompletableFuture<T> withTimeout(CompletableFuture<T> future, 
+                                               long timeout, TimeUnit unit) {
+        CompletableFuture<T> timeoutFuture = new CompletableFuture<>();
+        
+        // 원본 작업 완료 시 결과 전달
+        future.whenComplete((result, throwable) -> {
+            if (throwable != null) {
+                timeoutFuture.completeExceptionally(throwable);
+            } else {
+                timeoutFuture.complete(result);
+            }
+        });
+        
+        // 타임아웃 스케줄링
+        timeoutExecutor.schedule(() -> {
+            timeoutFuture.completeExceptionally(
+                new TimeoutException("Operation timed out after " + timeout + " " + unit)
+            );
+        }, timeout, unit);
+        
+        return timeoutFuture;
+    }
+}
+```
+
+### 3.2 컨텍스트 스위칭 구현 (1주)
+
+#### ContextSwitchingHandler.java
+```java
+package hybrid;
+
+import server.core.http.*;
+import server.core.routing.RouteHandler;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+
+public class ContextSwitchingHandler implements RouteHandler {
+    private final AsyncContextManager asyncManager;
+    private final RouteHandler delegateHandler;
+    
+    public ContextSwitchingHandler(RouteHandler delegateHandler, 
+                                 AsyncContextManager asyncManager) {
+        this.delegateHandler = delegateHandler;
+        this.asyncManager = asyncManager;
+    }
+    
+    @Override
+    public CompletableFuture<HttpResponse> handle(HttpRequest request) {
+        // 요청 처리를 비동기로 시작
+        CompletableFuture<HttpResponse> future = delegateHandler.handle(request);
+        
+        // 10초 타임아웃 설정
+        CompletableFuture<HttpResponse> timeoutFuture = 
+            asyncManager.withTimeout(future, 10, TimeUnit.SECONDS);
+        
+        return timeoutFuture.handle((response, throwable) -> {
+            if (throwable instanceof TimeoutException) {
+                // 타임아웃 시 별도 스레드풀로 위임
+                System.out.println("Request timed out, delegating to background thread");
+                return handleLongRunningTask(request);
+            } else if (throwable != null) {
+                return HttpResponse.serverError();
+            } else {
+                return response;
+            }
+        }).thenCompose(response -> {
+            if (response instanceof CompletableFuture) {
+                return (CompletableFuture<HttpResponse>) response;
+            } else {
+                return CompletableFuture.completedFuture(response);
+            }
+        });
+    }
+    
+    private CompletableFuture<HttpResponse> handleLongRunningTask(HttpRequest request) {
+        // 장기 실행 작업은 별도 스레드풀에서 처리
+        return asyncManager.executeIO(() -> {
+            // 실제로는 delegateHandler를 다시 호출하거나
+            // 특별한 장기 작업 처리 로직 실행
+            Thread.sleep(15000); // 15초 작업 시뮬레이션
+            return HttpResponse.ok("Long running task completed");
+        });
+    }
+}
+```
+
+### Chapter 3 완료 기준
+- [ ] AsyncContext로 요청 처리 중 스레드 해제
+- [ ] CompletableFuture 체인으로 비동기 처리
+- [ ] 타임아웃 시 별도 스레드풀로 작업 위임
+- [ ] 스레드 재활용으로 동시성 향상
+- [ ] Threaded 서버 대비 성능 향상 확인
+
 ---
 
-## 📅 상세 개발 일정
+## 📋 Chapter 4: EventLoop 서버 구현 (2주)
 
-| Phase | 기간 | 주요 마일스톤 | 누적 |
-|-------|------|---------------|------|
-| Phase 1 | 4-5주 | 서블릿 API 및 HTTP 완전 구현 | 5주 |
-| Phase 2 | 2-3주 | Traditional Server 완성 | 8주 |
-| Phase 3 | 1-2주 | 벤치마킹 도구 완성 | 10주 |
-| Phase 4 | 3-4주 | Hybrid Server 완성 | 14주 |
-| Phase 5 | 3-4주 | Event Loop Server 완성 | 18주 |
-| Phase 6 | 2-3주 | 고급 기능 및 최적화 | 21주 |
-| Phase 7 | 1-2주 | 최종 분석 및 문서화 | 23주 |
+**목표**: NIO Selector 기반 단일 스레드 이벤트루프 서버 구현  
+**위치**: `src/main/java/eventloop/`  
+**핵심**: 완전 논블로킹 I/O + 이벤트 기반 처리
 
-**총 예상 기간**: **약 5-6개월** (파트타임 기준)
+### 4.1 이벤트루프 핵심 구현 (1주)
 
----
-
-## 🔧 개발 원칙 및 가이드라인
-
-### 코드 품질
-- **테스트 주도 개발**: 각 컴포넌트마다 단위 테스트 필수
-- **문서화**: 복잡한 로직은 상세한 주석과 설계 문서
-- **성능 측정**: 모든 주요 기능에 성능 메트릭 수집 포인트
-
-### 학습 목표 달성
-- **깊이 있는 이해**: 표면적 구현이 아닌 원리 파악
-- **실제 적용**: 각 패턴이 실제 어떤 상황에서 유용한지 체험
-- **비교 분석**: 정량적 데이터를 통한 객관적 비교
-
-### 확장성 고려
-- **모듈러 설계**: 컴포넌트 간 느슨한 결합
-- **설정 가능**: 다양한 시나리오 테스트를 위한 설정 분리
-- **플러그인 아키텍처**: 새로운 기능 추가가 쉬운 구조
-
----
-
-## 🚀 기대 효과
-
-이 프로젝트를 완성하면 다음과 같은 심화 지식을 얻을 수 있습니다:
-
-### 기술적 역량
-- **서버 아키텍처 설계** 능력
-- **멀티스레딩 및 동시성** 전문 지식
-- **네트워크 프로그래밍** 실무 경험
-- **성능 최적화** 노하우
-
-### 시스템 이해도
-- **톰캣, Netty 같은 실제 서버**의 동작 원리
-- **스프링 MVC, FastAPI** 같은 프레임워크의 내부 구조
-- **마이크로서비스 아키텍처**에서의 서버 역할
-
-정말 **방대하고 도전적인 프로젝트**가 되겠지만, 그만큼 **깊이 있는 학습**과 **실무에 바로 적용 가능한 지식**을 얻을 수 있을 것입니다! 🔥
-
-어디서부터 시작해볼까요? Phase 1의 서블릿 API 설계부터 차근차근 해보시겠어요?
+#### EventLoop
