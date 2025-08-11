@@ -18,7 +18,7 @@ Java Server Architectures 프로젝트의 기본 디렉터리 구조와 설정 �
 JavaServerArchitectures/
 ├── src/                              # 소스 코드 루트
 │   └── main/java/                    # 메인 Java 소스
-│       ├── com/serverarch/           # 메인 패키지
+│       ├── com/com.serverarch/           # 메인 패키지
 │       │   ├── traditional/          # 전통적 서버 구현
 │       │   ├── eventloop/            # 이벤트 루프 서버 구현
 │       │   ├── hybrid/               # 하이브리드 서버 구현
@@ -35,7 +35,7 @@ JavaServerArchitectures/
 │       │   └── demo/                 # 데모 애플리케이션
 │       └── jakarta/servlet/          # 서블릿 API 구현
 ├── test/java/                        # 테스트 코드
-│   └── com/serverarch/              # 테스트 패키지 구조
+│   └── com/com.serverarch/              # 테스트 패키지 구조
 │       ├── common/                   # 공통 컴포넌트 테스트
 │       ├── traditional/              # 전통적 서버 테스트
 │       ├── eventloop/                # 이벤트 루프 서버 테스트
@@ -163,7 +163,7 @@ echo "Build completed."
 #!/bin/bash
 # 성능 벤치마크 실행
 echo "Running performance benchmarks..."
-java -cp build/classes com.serverarch.benchmark.BenchmarkRunner
+java -cp build/classes com.com.serverarch.benchmark.BenchmarkRunner
 echo "Benchmark completed. Results saved to benchmarks/results/"
 ```
 
@@ -209,7 +209,7 @@ Phase 1.1 완료 후 다음 단계로 진행:
 - Linux/macOS/Windows 환경
 
 ### 프로젝트 컨벤션
-- 패키지명: `com.serverarch.*`
+- 패키지명: `com.com.serverarch.*`
 - 코딩 스타일: Java 표준 컨벤션
 - 문서화: JavaDoc 필수
 - 테스트: JUnit 기반 단위 테스트

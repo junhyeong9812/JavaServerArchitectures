@@ -17,7 +17,7 @@ HTTP 프로토콜의 모든 측면을 완전히 구현하여 엔터프라이즈�
 ## 📁 구현된 파일 구조
 
 ```
-src/main/java/com/serverarch/common/http/
+src/main/java/com/com.serverarch/common/http/
 ├── protocol/                         # 프로토콜 핵심 구현
 │   ├── HttpProtocolHandler.java     # HTTP 프로토콜 핸들러
 │   ├── Http11Handler.java           # HTTP/1.1 특화 핸들러

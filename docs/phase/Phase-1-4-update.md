@@ -37,15 +37,15 @@
 
 ### 2. 새로 생성해야 할 클래스 파일
 
-#### D. `src/main/java/com/serverarch/container/FilterManager.java`
+#### D. `src/main/java/com/com.serverarch/container/FilterManager.java`
 ```java
-// 위치: src/main/java/com/serverarch/container/FilterManager.java
+// 위치: src/main/java/com/com.serverarch/container/FilterManager.java
 // 내용: 아티팩트 "filter_manager" 참조
 ```
 
 ### 3. 수정해야 할 기존 파일
 
-#### E. `src/main/java/com/serverarch/container/FilterChainImpl.java`
+#### E. `src/main/java/com/com.serverarch/container/FilterChainImpl.java`
 **현재 문제점:**
 - 파일 내부에 Filter, FilterConfig, FilterManager 인터페이스/클래스가 모두 포함됨
 - 단일 책임 원칙 위반
@@ -95,7 +95,7 @@ src/main/java/
 │   ├── Filter.java                    # 새로 생성
 │   ├── FilterChain.java               # 새로 생성  
 │   └── FilterConfig.java              # 새로 생성
-└── com/serverarch/
+└── com/com.serverarch/
     ├── container/
     │   ├── FilterChainImpl.java       # 수정 필요
     │   ├── FilterManager.java         # 새로 생성
@@ -131,7 +131,7 @@ src/main/java/
 ### 1. 컴파일 검증
 ```bash
 # 모든 Java 파일이 정상 컴파일되는지 확인
-javac -cp . src/main/java/com/serverarch/**/*.java src/main/java/jakarta/servlet/*.java
+javac -cp . src/main/java/com/com.serverarch/**/*.java src/main/java/jakarta/servlet/*.java
 ```
 
 ### 2. 의존성 검증

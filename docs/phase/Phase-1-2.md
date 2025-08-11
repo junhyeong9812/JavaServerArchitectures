@@ -352,7 +352,7 @@ HTTP 프로토콜의 요청과 응답을 파싱하고 생성하는 완전한 API
 ## 📁 구현된 파일 구조
 
 ```
-src/main/java/com/serverarch/common/http/
+src/main/java/com/com.serverarch/common/http/
 ├── HttpMethod.java                   # HTTP 메서드 열거형
 ├── HttpStatus.java                   # HTTP 상태 코드 열거형
 ├── HttpVersion.java                  # HTTP 버전 열거형

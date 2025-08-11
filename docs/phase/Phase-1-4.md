@@ -21,7 +21,7 @@ src/main/java/
 │   ├── Filter.java                  # 필터 인터페이스
 │   ├── FilterChain.java             # 필터 체인 인터페이스
 │   └── FilterConfig.java            # 필터 설정 인터페이스
-└── com/serverarch/
+└── com/com.serverarch/
     ├── container/                    # 서블릿 컨테이너 핵심
     │   ├── ServletRegistry.java     # 서블릿 등록 및 관리
     │   ├── ServletInstanceManager.java # 서블릿 인스턴스 생명주기

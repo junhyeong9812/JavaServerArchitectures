@@ -131,7 +131,7 @@ server.websocket.enabled=true            # 웹소켓 지원 - 실시간 양방�
 ```properties
 # Logging Configuration
 .level=INFO                               # 전역 로그 레벨 - INFO 이상만 출력
-com.serverarch.level=DEBUG               # 프로젝트 패키지 로그 레벨 - 디버그 정보 포함
+com.com.serverarch.level=DEBUG               # 프로젝트 패키지 로그 레벨 - 디버그 정보 포함
 
 # Console Handler - 콘솔 출력 설정
 handlers=java.util.logging.ConsoleHandler,java.util.logging.FileHandler
@@ -156,7 +156,7 @@ java.util.logging.FileHandler.formatter=java.util.logging.SimpleFormatter
 - **계층적 로그 레벨**: 전역 INFO, 프로젝트 DEBUG로 적절한 정보량 조절
 - **이중 출력**: 콘솔은 운영 모니터링용, 파일은 디버깅용
 - **로그 로테이션**: 10MB씩 5개 파일로 순환하여 디스크 공간 관리
-- **패키지별 제어**: com.serverarch 패키지만 상세 로깅으로 노이즈 감소
+- **패키지별 제어**: com.com.serverarch 패키지만 상세 로깅으로 노이즈 감소
 
 ---
 
@@ -290,7 +290,7 @@ java -cp build/classes:lib/* \
      # server.config: 애플리케이션에서 사용할 커스텀 시스템 프로퍼티
      # config/traditional-server.properties: Traditional 서버 전용 설정 파일
      # 포트, 스레드 풀, 타임아웃 등의 서버 설정이 포함
-     com.serverarch.traditional.TraditionalServer
+     com.com.serverarch.traditional.TraditionalServer
      # 실행할 메인 클래스의 완전한 패키지명 (Fully Qualified Class Name)
      # 이 클래스의 main() 메서드가 프로그램 진입점이 됨
 ```
@@ -317,7 +317,7 @@ java -cp build/classes:lib/* \
      -Dserver.config=config/hybrid-server.properties \
      # Hybrid 서버 전용 설정 파일 지정
      # 백프레셔, 비동기 타임아웃, 컨텍스트 스위치 임계값 등 포함
-     com.serverarch.hybrid.HybridServer
+     com.com.serverarch.hybrid.HybridServer
      # Hybrid 서버 메인 클래스 - 적응형 동기/비동기 처리 구현
 ```
 
@@ -343,7 +343,7 @@ java -cp build/classes:lib/* \
      -Dserver.config=config/eventloop-server.properties \
      # Event Loop 서버 전용 설정 파일
      # 이벤트 루프 스레드 수, 워커 스레드, 셀렉터 타임아웃 등 설정
-     com.serverarch.eventloop.EventLoopServer
+     com.com.serverarch.eventloop.EventLoopServer
      # Event Loop 서버 메인 클래스 - 단일 스레드 이벤트 기반 처리
 ```
 
@@ -384,9 +384,9 @@ java -cp build/classes:lib/* \
 
 #### 메인 클래스 실행
 ```bash
-com.serverarch.[type].TypeServer
+com.com.serverarch.[type].TypeServer
 ```
-- **패키지 구조**: com.serverarch 루트 패키지 하위에 서버 타입별 분리
+- **패키지 구조**: com.com.serverarch 루트 패키지 하위에 서버 타입별 분리
 - **클래스 명명**: [Type]Server 패턴으로 일관성 있는 구조
 - **main() 메서드**: 각 클래스의 static main 메서드가 프로그램 진입점
 
@@ -417,7 +417,7 @@ com.serverarch.[type].TypeServer
 4. **종료 방법**: Ctrl+C로 각 서버 개별 종료 또는 pkill 사용
    ```bash
    # 모든 서버 일괄 종료
-   pkill -f "com.serverarch"
+   pkill -f "com.com.serverarch"
    ```
 
 #### 환경 변수와 JVM 튜닝
@@ -432,7 +432,7 @@ java -Xms512m -Xmx2g \
      -cp build/classes:lib/* \
      -Djava.util.logging.config.file=config/logging.properties \
      -Dserver.config=config/traditional-server.properties \
-     com.serverarch.traditional.TraditionalServer
+     com.com.serverarch.traditional.TraditionalServer
 ```
 
 - **-Xms512m**: 초기 힙 메모리 512MB
@@ -476,7 +476,7 @@ fi
 java -cp build/classes:lib/* \
      -Dbenchmark.config=config/benchmark.properties \
      # 벤치마크 설정 파일 지정
-     com.serverarch.benchmark.BenchmarkRunner
+     com.com.serverarch.benchmark.BenchmarkRunner
      # 벤치마크 실행 메인 클래스
 
 echo "Benchmark completed! Check benchmarks/reports/ for results."
@@ -557,7 +557,7 @@ grep "ERROR" logs/server-*.log
 netstat -tulpn | grep :808[0-2]
 
 # 프로세스 종료
-pkill -f "com.serverarch"
+pkill -f "com.com.serverarch"
 ```
 
 ### 성능 모니터링
