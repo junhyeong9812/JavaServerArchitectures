@@ -1,6 +1,6 @@
-package jakarta.servlet;
+package jakarta.servlet; // 패키지 선언 - Jakarta EE 서블릿 API 패키지, 서블릿과 필터 관련 인터페이스들이 포함
 
-import java.io.IOException;
+import java.io.IOException; // import 선언 - 입출력 예외 클래스, 네트워크나 파일 I/O 중 발생할 수 있는 체크 예외
 
 /**
  * 서블릿 요청 및 응답을 필터링하는 인터페이스입니다.
@@ -16,7 +16,7 @@ import java.io.IOException;
  * 2. doFilter() - 요청 처리 (요청마다 실행)
  * 3. destroy() - 필터 정리 (종료 시 한 번만 실행)
  */
-public interface Filter {
+public interface Filter { // public interface 선언 - 모든 클래스에서 구현 가능한 서블릿 필터 인터페이스
 
     /**
      * 필터를 초기화합니다.
@@ -33,10 +33,10 @@ public interface Filter {
      * @param filterConfig 필터 설정 정보를 담은 FilterConfig 객체
      * @throws ServletException 초기화 실패 시 발생
      */
-    default void init(FilterConfig filterConfig) throws ServletException {
+    default void init(FilterConfig filterConfig) throws ServletException { // default 메서드 - Java 8부터 지원, 인터페이스에서 기본 구현 제공, ServletException 던질 수 있음
         // 기본 구현은 아무것도 하지 않음
         // 필터 구현체에서 필요시 오버라이드
-    }
+    } // 메서드 본문 - 빈 구현, 필터 구현 클래스에서 필요에 따라 오버라이드
 
     /**
      * 필터링 로직을 수행합니다.
@@ -61,8 +61,8 @@ public interface Filter {
      * @throws IOException 입출력 오류가 발생한 경우
      * @throws ServletException 서블릿 처리 중 오류가 발생한 경우
      */
-    void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
-            throws IOException, ServletException;
+    void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) // abstract 메서드 - interface의 메서드는 기본적으로 public abstract, 필터 핵심 로직
+            throws IOException, ServletException; // throws 절 - 두 가지 체크 예외를 던질 수 있음을 선언
 
     /**
      * 필터를 정리합니다.
@@ -77,8 +77,8 @@ public interface Filter {
      * - 캐시 정리
      * - 임시 파일 삭제
      */
-    default void destroy() {
+    default void destroy() { // default 메서드 - 기본 구현 제공, 예외 선언 없음 (정리 작업은 예외를 던지지 않는 것이 일반적)
         // 기본 구현은 아무것도 하지 않음
         // 필터 구현체에서 필요시 오버라이드
-    }
+    } // 메서드 본문 - 빈 구현, 리소스 정리가 필요한 필터에서 오버라이드
 }

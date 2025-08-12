@@ -1,6 +1,6 @@
-package jakarta.servlet;
+package jakarta.servlet; // 패키지 선언 - Jakarta EE 서블릿 API 패키지, 필터 설정 관련 인터페이스가 포함
 
-import java.util.Enumeration;
+import java.util.Enumeration; // import 선언 - 열거형 인터페이스, 컬렉션 요소들을 순차적으로 접근하기 위한 레거시 인터페이스
 
 /**
  * 필터의 초기화 설정 정보를 제공하는 인터페이스입니다.
@@ -18,7 +18,7 @@ import java.util.Enumeration;
  * - 필터 초기화 단계에서만 사용됨
  * - 필터 라이프사이클 동안 참조 유지 가능
  */
-public interface FilterConfig {
+public interface FilterConfig { // public interface 선언 - 모든 클래스에서 접근 가능한 필터 설정 인터페이스
 
     /**
      * 필터의 이름을 반환합니다.
@@ -32,7 +32,7 @@ public interface FilterConfig {
      *
      * @return 필터의 이름, null이 될 수 없음
      */
-    String getFilterName();
+    String getFilterName(); // abstract 메서드 - String 반환형, 필터 이름 조회, interface의 메서드는 기본적으로 public abstract
 
     /**
      * 이 필터가 속한 서블릿 컨텍스트를 반환합니다.
@@ -55,7 +55,7 @@ public interface FilterConfig {
      *
      * @return 서블릿 컨텍스트 객체, null이 될 수 없음
      */
-    ServletContext getServletContext();
+    ServletContext getServletContext(); // abstract 메서드 - ServletContext 반환형, 웹 애플리케이션 컨텍스트 조회
 
     /**
      * 지정된 이름의 초기화 매개변수 값을 반환합니다.
@@ -104,7 +104,7 @@ public interface FilterConfig {
      * @return 매개변수 값, 존재하지 않으면 null
      * @throws IllegalArgumentException name이 null인 경우 (구현에 따라)
      */
-    String getInitParameter(String name);
+    String getInitParameter(String name); // abstract 메서드 - String 매개변수와 String 반환형, 초기화 매개변수 값 조회
 
     /**
      * 모든 초기화 매개변수의 이름들을 열거형으로 반환합니다.
@@ -139,5 +139,5 @@ public interface FilterConfig {
      * @return 모든 초기화 매개변수 이름의 열거형
      *         매개변수가 없으면 빈 열거형 반환 (null 아님)
      */
-    Enumeration<String> getInitParameterNames();
+    Enumeration<String> getInitParameterNames(); // abstract 메서드 - Enumeration<String> 반환형, 제네릭 타입으로 String을 담는 열거형
 }

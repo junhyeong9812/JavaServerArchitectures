@@ -1,6 +1,6 @@
-package jakarta.servlet;
+package jakarta.servlet; // 패키지 선언 - Jakarta EE 서블릿 API 패키지, 비동기 처리 관련 인터페이스들이 포함
 
-import java.io.IOException;
+import java.io.IOException; // import 선언 - 입출력 예외 클래스, 네트워크나 파일 I/O 중 발생할 수 있는 예외
 
 /**
  * 비동기 요청 처리의 생명주기 이벤트를 처리하는 리스너 인터페이스입니다.
@@ -20,7 +20,7 @@ import java.io.IOException;
  * - 에러 처리 및 복구
  * - 성능 측정
  */
-public interface AsyncListener {
+public interface AsyncListener { // public interface 선언 - 모든 클래스에서 구현 가능한 비동기 리스너 인터페이스
 
     /**
      * 비동기 작업이 성공적으로 완료되었을 때 호출됩니다.
@@ -53,7 +53,7 @@ public interface AsyncListener {
      * @param event 비동기 이벤트 정보
      * @throws IOException 입출력 오류 시
      */
-    void onComplete(AsyncEvent event) throws IOException;
+    void onComplete(AsyncEvent event) throws IOException; // abstract 메서드 - interface의 모든 메서드는 기본적으로 public abstract, void 반환형, IOException 던질 수 있음
 
     /**
      * 비동기 작업이 타임아웃되었을 때 호출됩니다.
@@ -87,7 +87,7 @@ public interface AsyncListener {
      * @param event 비동기 이벤트 정보
      * @throws IOException 입출력 오류 시
      */
-    void onTimeout(AsyncEvent event) throws IOException;
+    void onTimeout(AsyncEvent event) throws IOException; // abstract 메서드 - 타임아웃 이벤트 처리, AsyncEvent 매개변수, IOException 예외 선언
 
     /**
      * 비동기 작업 중 오류가 발생했을 때 호출됩니다.
@@ -123,7 +123,7 @@ public interface AsyncListener {
      * @param event 비동기 이벤트 정보 (getThrowable()로 예외 정보 확인 가능)
      * @throws IOException 입출력 오류 시
      */
-    void onError(AsyncEvent event) throws IOException;
+    void onError(AsyncEvent event) throws IOException; // abstract 메서드 - 오류 이벤트 처리, AsyncEvent.getThrowable()로 예외 정보 접근 가능
 
     /**
      * 새로운 비동기 작업이 시작되었을 때 호출됩니다.
@@ -155,5 +155,5 @@ public interface AsyncListener {
      * @param event 비동기 이벤트 정보
      * @throws IOException 입출력 오류 시
      */
-    void onStartAsync(AsyncEvent event) throws IOException;
+    void onStartAsync(AsyncEvent event) throws IOException; // abstract 메서드 - 비동기 시작 이벤트 처리, 새로운 비동기 컨텍스트 생성 시 호출
 }

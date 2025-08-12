@@ -1,6 +1,6 @@
-package jakarta.servlet;
+package jakarta.servlet; // 패키지 선언 - Jakarta EE 서블릿 API 패키지, 필터 체인 관련 인터페이스가 포함
 
-import java.io.IOException;
+import java.io.IOException; // import 선언 - 입출력 예외 클래스, I/O 작업 중 발생할 수 있는 체크 예외
 
 /**
  * 필터 체인을 나타내는 인터페이스입니다.
@@ -19,7 +19,7 @@ import java.io.IOException;
  * Request -> Filter1 -> Filter2 -> Filter3 -> Servlet
  * Response <- Filter1 <- Filter2 <- Filter3 <- Servlet
  */
-public interface FilterChain {
+public interface FilterChain { // public interface 선언 - 모든 클래스에서 사용 가능한 필터 체인 인터페이스
 
     /**
      * 필터 체인의 다음 단계를 실행합니다.
@@ -64,6 +64,6 @@ public interface FilterChain {
      *                          예: 설정 오류, 필터 초기화 실패, 서블릿 실행 오류
      * @throws IllegalStateException 체인이 이미 완료된 상태에서 다시 호출된 경우
      */
-    void doFilter(ServletRequest request, ServletResponse response)
-            throws IOException, ServletException;
+    void doFilter(ServletRequest request, ServletResponse response) // abstract 메서드 - interface의 메서드는 기본적으로 public abstract
+            throws IOException, ServletException; // throws 절 - IOException과 ServletException 두 가지 체크 예외를 던질 수 있음을 선언
 }

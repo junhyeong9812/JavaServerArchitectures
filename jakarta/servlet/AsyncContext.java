@@ -1,4 +1,4 @@
-package jakarta.servlet;
+package jakarta.servlet; // 패키지 선언 - Jakarta EE 서블릿 API 패키지, Java EE에서 Jakarta EE로 이름 변경됨
 
 /**
  * 비동기 요청 처리를 위한 컨텍스트를 제공하는 인터페이스입니다.
@@ -19,7 +19,7 @@ package jakarta.servlet;
  * - 파일 업로드/다운로드
  * - 백그라운드 작업 처리
  */
-public interface AsyncContext {
+public interface AsyncContext { // public interface 선언 - 모든 클래스에서 구현 가능한 비동기 컨텍스트 인터페이스
 
     /**
      * 비동기 작업 완료를 나타내는 상수입니다.
@@ -27,11 +27,11 @@ public interface AsyncContext {
      * 이 문자열은 요청 속성의 이름으로 사용되어
      * 비동기 처리가 완료되었음을 표시합니다.
      */
-    String ASYNC_REQUEST_URI = "jakarta.servlet.async.request_uri";
-    String ASYNC_CONTEXT_PATH = "jakarta.servlet.async.context_path";
-    String ASYNC_PATH_INFO = "jakarta.servlet.async.path_info";
-    String ASYNC_SERVLET_PATH = "jakarta.servlet.async.servlet_path";
-    String ASYNC_QUERY_STRING = "jakarta.servlet.async.query_string";
+    String ASYNC_REQUEST_URI = "jakarta.servlet.async.request_uri"; // String 상수 - 비동기 요청 URI 속성 이름, 서블릿 컨테이너가 사용하는 표준 속성명
+    String ASYNC_CONTEXT_PATH = "jakarta.servlet.async.context_path"; // String 상수 - 비동기 컨텍스트 경로 속성 이름, 웹 애플리케이션 루트 경로
+    String ASYNC_PATH_INFO = "jakarta.servlet.async.path_info"; // String 상수 - 비동기 경로 정보 속성 이름, 서블릿 경로 뒤의 추가 경로 정보
+    String ASYNC_SERVLET_PATH = "jakarta.servlet.async.servlet_path"; // String 상수 - 비동기 서블릿 경로 속성 이름, 서블릿 매핑 패턴에 해당하는 부분
+    String ASYNC_QUERY_STRING = "jakarta.servlet.async.query_string"; // String 상수 - 비동기 쿼리 스트링 속성 이름, URL의 ? 뒤에 오는 매개변수들
 
     /**
      * 원본 요청 객체를 반환합니다.
@@ -41,7 +41,7 @@ public interface AsyncContext {
      *
      * @return 원본 ServletRequest 객체
      */
-    ServletRequest getRequest();
+    ServletRequest getRequest(); // abstract 메서드 - interface의 모든 메서드는 기본적으로 public abstract, 원본 요청 객체 반환
 
     /**
      * 원본 응답 객체를 반환합니다.
@@ -51,7 +51,7 @@ public interface AsyncContext {
      *
      * @return 원본 ServletResponse 객체
      */
-    ServletResponse getResponse();
+    ServletResponse getResponse(); // abstract 메서드 - 원본 응답 객체 반환, 클라이언트에게 데이터 전송용
 
     /**
      * 요청이 원본 요청 객체로 디스패치되었는지 확인합니다.
@@ -61,7 +61,7 @@ public interface AsyncContext {
      *
      * @return 원본 요청/응답 객체가 사용되고 있으면 true, 래퍼가 사용되고 있으면 false
      */
-    boolean hasOriginalRequestAndResponse();
+    boolean hasOriginalRequestAndResponse(); // abstract 메서드 - boolean 반환형, 원본 객체 사용 여부 확인
 
     /**
      * 비동기 작업을 다른 경로로 디스패치합니다.
@@ -82,7 +82,7 @@ public interface AsyncContext {
      * @param path 디스패치할 경로
      * @throws IllegalStateException AsyncContext가 이미 완료되었거나 다른 디스패치가 진행 중인 경우
      */
-    void dispatch(String path);
+    void dispatch(String path); // abstract 메서드 - void 반환형, String path 매개변수, 지정 경로로 요청 전달
 
     /**
      * 비동기 작업을 지정된 컨텍스트와 경로로 디스패치합니다.
@@ -93,7 +93,7 @@ public interface AsyncContext {
      * @param path 디스패치할 경로
      * @throws IllegalStateException AsyncContext가 이미 완료되었거나 다른 디스패치가 진행 중인 경우
      */
-    void dispatch(ServletContext context, String path);
+    void dispatch(ServletContext context, String path); // abstract 메서드 - 메서드 오버로딩, ServletContext와 String 매개변수
 
     /**
      * 원본 요청 경로로 디스패치합니다.
@@ -102,7 +102,7 @@ public interface AsyncContext {
      *
      * @throws IllegalStateException AsyncContext가 이미 완료되었거나 다른 디스패치가 진행 중인 경우
      */
-    void dispatch();
+    void dispatch(); // abstract 메서드 - 메서드 오버로딩, 매개변수 없는 버전, 원본 경로로 디스패치
 
     /**
      * 비동기 작업을 완료하고 응답을 클라이언트에게 전송합니다.
@@ -129,7 +129,7 @@ public interface AsyncContext {
      *
      * @throws IllegalStateException AsyncContext가 이미 완료되었거나 다른 디스패치가 진행 중인 경우
      */
-    void complete();
+    void complete(); // abstract 메서드 - void 반환형, 매개변수 없음, 비동기 처리 완료 및 응답 전송
 
     /**
      * 비동기 리스너를 추가합니다.
@@ -140,7 +140,7 @@ public interface AsyncContext {
      * @param listener 등록할 AsyncListener
      * @throws IllegalStateException AsyncContext가 이미 완료되었거나 다른 디스패치가 진행 중인 경우
      */
-    void addListener(AsyncListener listener);
+    void addListener(AsyncListener listener); // abstract 메서드 - AsyncListener 타입 매개변수, 이벤트 리스너 등록
 
     /**
      * 요청/응답 객체와 함께 비동기 리스너를 추가합니다.
@@ -152,7 +152,7 @@ public interface AsyncContext {
      * @param response 리스너가 사용할 ServletResponse 객체
      * @throws IllegalStateException AsyncContext가 이미 완료되었거나 다른 디스패치가 진행 중인 경우
      */
-    void addListener(AsyncListener listener, ServletRequest request, ServletResponse response);
+    void addListener(AsyncListener listener, ServletRequest request, ServletResponse response); // abstract 메서드 - 메서드 오버로딩, 세 개의 매개변수
 
     /**
      * 비동기 작업의 타임아웃을 설정합니다.
@@ -184,12 +184,12 @@ public interface AsyncContext {
      * @param timeout 타임아웃 시간 (밀리초), 0이면 타임아웃 없음
      * @throws IllegalStateException AsyncContext가 이미 완료되었거나 다른 디스패치가 진행 중인 경우
      */
-    void setTimeout(long timeout);
+    void setTimeout(long timeout); // abstract 메서드 - long 타입 매개변수, 타임아웃 시간을 밀리초 단위로 설정
 
     /**
      * 현재 설정된 타임아웃 값을 반환합니다.
      *
      * @return 타임아웃 시간 (밀리초), 타임아웃이 설정되지 않았으면 구현 의존적인 값
      */
-    long getTimeout();
+    long getTimeout(); // abstract 메서드 - long 반환형, 현재 설정된 타임아웃 값 조회
 }
