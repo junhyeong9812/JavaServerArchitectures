@@ -7,7 +7,7 @@ import java.io.IOException;
  *
  * Servlet 3.1의 논블로킹 I/O 기능에서 사용됩니다.
  */
-interface WriteListener {
+public interface WriteListener {
     /**
      * 데이터 쓰기가 가능할 때 호출됩니다.
      */

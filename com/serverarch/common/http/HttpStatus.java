@@ -25,6 +25,10 @@ public enum HttpStatus {
     // DELETE 요청이나 업데이트 후 추가 정보가 불필요할 때 사용
     NO_CONTENT(204, "No Content"),
 
+    // 206 Partial Content: 부분 내용 응답 (Range 요청에 대한 응답)
+    // Enhanced 코드에서 StaticFileHandler의 Range 요청 처리에 사용
+    PARTIAL_CONTENT(206, "Partial Content"),
+
     // ========== 3xx Redirection (리다이렉션) 상태 코드 ==========
     // 요청을 완료하기 위해 추가 작업이 필요함을 나타냄
 
@@ -36,6 +40,11 @@ public enum HttpStatus {
     // 원본 URL이 나중에 다시 사용될 수 있음
     FOUND(302, "Found"),
 
+    // 304 Not Modified: 리소스가 수정되지 않음
+    // Enhanced 코드에서 StaticFileHandler의 조건부 요청 처리에 사용
+    // If-Modified-Since나 If-None-Match 헤더를 통한 캐시 검증
+    NOT_MODIFIED(304, "Not Modified"),
+
     // ========== 4xx Client Error (클라이언트 오류) 상태 코드 ==========
     // 클라이언트의 잘못된 요청으로 인한 오류
 
@@ -44,10 +53,12 @@ public enum HttpStatus {
     BAD_REQUEST(400, "Bad Request"),
 
     // 401 Unauthorized: 인증이 필요함
+    // Enhanced 코드에서 AuthMiddleware에 사용
     // 로그인이 필요한 리소스에 접근할 때 사용
     UNAUTHORIZED(401, "Unauthorized"),
 
     // 403 Forbidden: 권한이 부족함
+    // Enhanced 코드에서 MiddlewareChain의 SecurityException 처리에 사용
     // 인증은 되었지만 해당 리소스에 대한 권한이 없을 때 사용
     FORBIDDEN(403, "Forbidden"),
 
@@ -58,6 +69,11 @@ public enum HttpStatus {
     // 405 Method Not Allowed: 허용되지 않는 HTTP 메서드
     // GET만 지원하는 엔드포인트에 POST 요청을 보냈을 때 등
     METHOD_NOT_ALLOWED(405, "Method Not Allowed"),
+
+    // 429 Too Many Requests: 요청 빈도가 너무 높음
+    // Enhanced 코드에서 RateLimitMiddleware에 사용
+    // 레이트 리미팅에서 요청 한도를 초과했을 때 사용
+    TOO_MANY_REQUESTS(429, "Too Many Requests"),
 
     // ========== 5xx Server Error (서버 오류) 상태 코드 ==========
     // 서버 측 오류로 인해 요청을 처리할 수 없음

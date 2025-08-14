@@ -258,6 +258,19 @@ public class ThreadPoolManager {
     }
 
     /**
+     * 현재 스레드 풀의 실제 크기를 반환합니다.
+     * 이 메서드는 ThreadedServerLauncher에서 호출되는 핵심 메서드입니다.
+     *
+     * @return 현재 스레드 풀에 있는 스레드의 실제 개수
+     */
+    public int getPoolSize() { // public 메서드 - ThreadedServerLauncher에서 호출하는 필수 메서드
+        // threadPoolExecutor.getPoolSize(): ThreadPoolExecutor의 현재 스레드 수를 반환하는 메서드
+        // 이 값은 코어 스레드 수와 최대 스레드 수 사이의 값으로, 현재 실제로 생성되어 있는 스레드의 개수를 나타냄
+        // 작업 부하에 따라 동적으로 변하며, 코어 스레드 수보다 적을 수도 있고 최대 스레드 수까지 늘어날 수도 있음
+        return threadPoolExecutor.getPoolSize(); // 현재 풀에 있는 실제 스레드 개수 반환
+    }
+
+    /**
      * 스레드 풀을 우아하게 종료합니다.
      *
      * @param timeoutSeconds 종료 대기 시간 (초)
@@ -494,7 +507,7 @@ public class ThreadPoolManager {
             logger.info(String.format(
                     "스레드풀 상태 - 활성: %d/%d, 큐: %d, 완료: %d, 거부: %d, 평균실행시간: %.2fms, 처리량: %.2f작업/초",
                     status.getActiveCount(),
-                    status.getCurrentPoolSize(),
+                    status.getCurrentPoolSize(), // 수정된 부분 - getCurrentPoolSize() 사용
                     status.getQueueSize(),
                     metrics.getCompletedTasks(),
                     metrics.getRejectedTasks(),
@@ -714,7 +727,33 @@ public class ThreadPoolManager {
         // Getter 메서드들 - 불변 객체이므로 필드 값 반환만 수행
         public int getCorePoolSize() { return corePoolSize; }
         public int getMaximumPoolSize() { return maximumPoolSize; }
-        public int getCurrentPoolSize() { return currentPoolSize; }
+
+        /**
+         * 현재 풀 크기를 반환합니다. (getPoolSize 별칭)
+         * ThreadedServerLauncher에서 poolStatus.getPoolSize()로 호출됩니다.
+         *
+         * @return 현재 스레드 풀에 있는 스레드의 실제 개수
+         */
+        public int getPoolSize() { // public 메서드 - ThreadedServerLauncher에서 poolStatus.getPoolSize()로 호출되는 메서드
+            // currentPoolSize 필드 반환 - ThreadPoolExecutor.getPoolSize()에서 가져온 현재 실제 스레드 개수
+            // 이 값은 코어 스레드 수와 최대 스레드 수 사이에서 작업 부하에 따라 동적으로 변화함
+            // ThreadedServerLauncher의 고급 메트릭 엔드포인트에서 사용되는 핵심 메서드
+            return currentPoolSize; // 현재 풀에 있는 실제 스레드 개수
+        }
+
+        /**
+         * 현재 풀 크기를 반환합니다. (getCurrentPoolSize 별칭)
+         * ThreadedServerLauncher에서 poolStatus.getCurrentPoolSize()로도 호출됩니다.
+         *
+         * @return 현재 스레드 풀에 있는 스레드의 실제 개수
+         */
+        public int getCurrentPoolSize() { // public 메서드 - ThreadedServerLauncher의 호출 요구사항에 맞춘 메서드명
+            // currentPoolSize 필드 반환 - ThreadPoolExecutor.getPoolSize()에서 가져온 현재 실제 스레드 개수
+            // 이 값은 코어 스레드 수와 최대 스레드 수 사이에서 작업 부하에 따라 동적으로 변화함
+            // getPoolSize()와 동일한 기능을 제공하는 별칭 메서드
+            return currentPoolSize; // 현재 풀에 있는 실제 스레드 개수
+        }
+
         public int getActiveCount() { return activeCount; }
         public int getQueueSize() { return queueSize; }
         public int getQueueRemainingCapacity() { return queueRemainingCapacity; }

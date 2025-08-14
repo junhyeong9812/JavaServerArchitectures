@@ -16,19 +16,22 @@ import java.nio.charset.StandardCharsets;
 // Arrays: 배열 관련 유틸리티 메서드 제공 클래스
 // HashMap: 해시테이블 기반 맵 구현 클래스
 // HashSet: 해시테이블 기반 집합 구현 클래스
+// List: 순서가 있는 컬렉션 인터페이스
+// ArrayList: 동적 배열 기반 리스트 구현 클래스
 // Map: 키-값 쌍을 저장하는 컬렉션 인터페이스
 // Objects: 객체 관련 유틸리티 메서드 제공 클래스
 // Set: 중복을 허용하지 않는 컬렉션 인터페이스
 import java.util.*;
 
 /**
- * 간단하고 현대적인 HTTP 요청 클래스
+ * 간단하고 현대적인 HTTP 요청 클래스 (파서 호환 버전)
  *
  * 설계 목표:
  * 1. 무거운 서블릿 API 대신 HTTP 처리 본질에 집중
  * 2. 3가지 서버 아키텍처가 공통으로 사용할 수 있는 단순한 구조
  * 3. 현대적 Java 기능 활용 (불변성, 방어적 복사)
  * 4. 메모리 효율성과 스레드 안전성 고려
+ * 5. HttpRequestParser와 완벽 호환성 보장
  */
 public class HttpRequest {
 
@@ -41,9 +44,10 @@ public class HttpRequest {
     // final로 선언하여 불변성 보장 - 라우팅의 기준이 되므로 변경되면 안 됨
     private final String path;
 
-    // 쿼리 스트링 (?name=value&age=30 부분)
-    // null일 수 있으므로 nullable로 설계 - 모든 요청이 쿼리 스트링을 갖지는 않음
-    private final String queryString;
+    // HTTP 버전 (HTTP/1.1, HTTP/1.0 등)
+    // final로 선언하여 불변성 보장 - 프로토콜 버전은 요청 생성 후 변경되면 안 됨
+    // 파서에서 요청 라인 파싱 시 추출되는 정보
+    private final String version;
 
     // HTTP 헤더들 (Host, Content-Type, User-Agent 등)
     // final로 선언하여 불변성 보장 - 헤더는 요청의 메타데이터이므로 변경되면 안 됨
@@ -59,21 +63,28 @@ public class HttpRequest {
     // new HashMap<>(): 빈 HashMap으로 초기화
     private final Map<String, String> pathParameters = new HashMap<>();
 
+    // 쿼리 파라미터 (?name=value&age=30 부분을 파싱한 결과)
+    // Map<String, List<String>>로 설계한 이유: 같은 키가 여러 번 나올 수 있기 때문 (?tag=java&tag=spring)
+    // mutable Map으로 설계한 이유: 파서에서 파싱 과정에서 동적으로 추가되기 때문
+    // 파서가 쿼리 스트링을 파싱하여 직접 저장하는 방식으로 성능 최적화
+    private final Map<String, List<String>> queryParameters = new HashMap<>();
+
     // 요청 속성 (필터나 인터셉터에서 설정하는 메타데이터)
     // mutable Map으로 설계한 이유: 요청 처리 과정에서 동적으로 추가되는 정보이기 때문
     // Map<String, Object>: 키는 String, 값은 Object인 맵 타입 (다양한 타입 저장 가능)
     private final Map<String, Object> attributes = new HashMap<>();
 
     /**
-     * HttpRequest 생성자
+     * HttpRequest 생성자 (파서 전용)
+     * HttpRequestParser에서 HTTP 요청을 파싱한 후 객체 생성 시 사용
      *
      * @param method HTTP 메서드 (null이면 GET으로 기본값 설정)
      * @param path 요청 경로 (null이면 "/"로 기본값 설정)
-     * @param queryString 쿼리 스트링 (nullable)
+     * @param version HTTP 버전 (null이면 HTTP/1.1로 기본값 설정)
      * @param headers HTTP 헤더들 (null이면 빈 헤더로 기본값 설정)
      * @param body 요청 바디 (null이면 빈 배열로 기본값 설정)
      */
-    public HttpRequest(String method, String path, String queryString,
+    public HttpRequest(String method, String path, String version,
                        HttpHeaders headers, byte[] body) {
         // null 체크하여 기본값 설정 - 방어적 프로그래밍으로 NPE 방지
         // method != null: null 체크
@@ -84,8 +95,8 @@ public class HttpRequest {
         // path가 null이면 루트 경로로 설정 - 모든 HTTP 요청은 경로를 가져야 하기 때문
         this.path = path != null ? path : "/";
 
-        // queryString은 null 허용 - 모든 요청이 쿼리 스트링을 갖지는 않기 때문
-        this.queryString = queryString;
+        // version이 null이면 HTTP/1.1로 기본값 설정 - 현재 가장 널리 사용되는 버전
+        this.version = version != null ? version : "HTTP/1.1";
 
         // headers가 null이면 빈 헤더 객체 생성 - 헤더 접근 시 NPE 방지
         // new HttpHeaders(): 빈 헤더 객체 생성
@@ -94,6 +105,65 @@ public class HttpRequest {
         // body가 null이면 빈 배열로 설정 - 바디 접근 시 NPE 방지 및 일관성 보장
         // new byte[0]: 크기가 0인 바이트 배열 생성
         this.body = body != null ? body : new byte[0];
+    }
+
+    /**
+     * HttpRequest 생성자 (기존 호환성 유지)
+     * 기존 코드와의 호환성을 위해 유지되는 생성자
+     *
+     * @param method HTTP 메서드 (null이면 GET으로 기본값 설정)
+     * @param path 요청 경로 (null이면 "/"로 기본값 설정)
+     * @param queryString 쿼리 스트링 (사용되지 않음 - 파서에서 직접 파라미터 설정)
+     * @param headers HTTP 헤더들 (null이면 빈 헤더로 기본값 설정)
+     * @param body 요청 바디 (null이면 빈 배열로 기본값 설정)
+     */
+//    public HttpRequest(String method, String path, String queryString,
+//                       HttpHeaders headers, byte[] body) {
+//        // 파서 전용 생성자에 위임 - 코드 중복 방지
+//        // queryString은 무시하고 HTTP/1.1을 기본 버전으로 사용
+//        // 파서가 직접 쿼리 파라미터를 설정하므로 queryString 파라미터는 사용하지 않음
+//        this(method, path, "HTTP/1.1", headers, body);
+//    }
+
+    // ========== 파서 전용 메서드들 (HttpRequestParser에서 호출) ==========
+
+    /**
+     * 쿼리 파라미터 추가 (파서 전용)
+     * HttpRequestParser에서 쿼리 스트링을 파싱하면서 호출
+     * 같은 키에 여러 값이 올 수 있으므로 리스트로 관리
+     *
+     * @param name 파라미터 이름
+     * @param value 파라미터 값
+     */
+    public void addQueryParameter(String name, String value) {
+        // name이나 value가 null이면 무시 - 잘못된 파라미터 방지
+        // name != null: null 체크
+        // value != null: null 체크
+        if (name != null && value != null) {
+            // computeIfAbsent(): 키가 없으면 새 리스트 생성, 있으면 기존 리스트 반환
+            // k -> new ArrayList<>(): 람다 표현식으로 새 ArrayList 생성 함수
+            // .add(): List의 요소 추가 메서드
+            queryParameters.computeIfAbsent(name, k -> new ArrayList<>()).add(value);
+        }
+    }
+
+    /**
+     * 여러 쿼리 파라미터를 한 번에 추가 (파서 편의 메서드)
+     * 파서에서 배치 처리 시 사용할 수 있는 최적화된 메서드
+     *
+     * @param parameters 추가할 파라미터 맵
+     */
+    public void addQueryParameters(Map<String, String> parameters) {
+        // parameters가 null이면 무시 - NPE 방지
+        if (parameters != null) {
+            // parameters.entrySet(): Map의 모든 키-값 쌍을 Set으로 반환
+            // for-each 루프: Map의 모든 엔트리를 순회
+            for (Map.Entry<String, String> entry : parameters.entrySet()) {
+                // entry.getKey(): Map.Entry의 키 반환 메서드
+                // entry.getValue(): Map.Entry의 값 반환 메서드
+                addQueryParameter(entry.getKey(), entry.getValue());
+            }
+        }
     }
 
     // ========== 기본 Getter 메서드들 ==========
@@ -126,12 +196,58 @@ public class HttpRequest {
     }
 
     /**
-     * 쿼리 스트링 반환
-     * @return 쿼리 스트링 (예: "name=john&age=30") 또는 null
+     * HTTP 버전 반환
+     * @return HTTP 버전 (예: "HTTP/1.1")
+     */
+    public String getVersion() {
+        // 단순 반환 - final 필드이므로 불변성 보장됨
+        // 파서에서 설정된 HTTP 버전 정보 반환
+        return version;
+    }
+
+    /**
+     * 쿼리 스트링 반환 (재구성)
+     * 파서에서 파싱된 쿼리 파라미터들을 다시 쿼리 스트링 형태로 재구성
+     * 호환성을 위해 제공되는 메서드
+     * @return 재구성된 쿼리 스트링 또는 null
      */
     public String getQueryString() {
-        // null일 수 있음을 명시적으로 허용 - 모든 요청이 쿼리 스트링을 갖지는 않음
-        return queryString;
+        // 쿼리 파라미터가 없으면 null 반환
+        // queryParameters.isEmpty(): Map이 비어있는지 확인
+        if (queryParameters.isEmpty()) {
+            return null;
+        }
+
+        // StringBuilder로 쿼리 스트링 재구성
+        // new StringBuilder(): 가변 문자열 빌더 생성
+        StringBuilder sb = new StringBuilder();
+
+        // 첫 번째 파라미터인지 확인하는 플래그
+        boolean first = true;
+
+        // queryParameters.entrySet(): Map의 모든 키-값 쌍을 Set으로 반환
+        for (Map.Entry<String, List<String>> entry : queryParameters.entrySet()) {
+            // entry.getKey(): 파라미터 이름
+            String name = entry.getKey();
+            // entry.getValue(): 파라미터 값들의 리스트
+            List<String> values = entry.getValue();
+
+            // 같은 이름의 파라미터가 여러 개 있을 수 있으므로 리스트 순회
+            for (String value : values) {
+                // 첫 번째 파라미터가 아니면 '&' 추가
+                if (!first) {
+                    // sb.append(): StringBuilder의 문자열 추가 메서드
+                    sb.append("&");
+                }
+                first = false;
+
+                // 파라미터 이름과 값을 추가
+                sb.append(name).append("=").append(value);
+            }
+        }
+
+        // sb.toString(): StringBuilder를 String으로 변환
+        return sb.toString();
     }
 
     /**
@@ -261,61 +377,109 @@ public class HttpRequest {
         return new HashMap<>(pathParameters);
     }
 
-    // ========== 쿼리 파라미터 파싱 ==========
+    // ========== 쿼리 파라미터 접근 메서드들 ==========
 
     /**
-     * 쿼리 스트링을 파싱하여 키-값 쌍으로 반환
+     * 특정 쿼리 파라미터의 첫 번째 값 반환
+     * 서블릿 API와 호환성을 위한 메서드
      *
-     * @return 쿼리 파라미터 Map (never null)
+     * @param name 파라미터 이름
+     * @return 파라미터의 첫 번째 값 또는 null
      */
-    public Map<String, String> getQueryParameters() {
-        // 결과를 저장할 Map 생성
-        Map<String, String> params = new HashMap<>();
+    public String getParameter(String name) {
+        // queryParameters.get(): Map의 값 조회 메서드
+        List<String> values = queryParameters.get(name);
 
-        // 쿼리 스트링이 없으면 빈 Map 반환 - null 체크로 NPE 방지
-        // queryString != null: null 체크
-        // !queryString.isEmpty(): 빈 문자열이 아닌지 확인
-        if (queryString != null && !queryString.isEmpty()) {
-            // '&'로 파라미터들을 분리 - HTTP 표준에 따른 구분자
-            // queryString.split(): String의 분할 메서드
-            String[] pairs = queryString.split("&");
-
-            // 각 파라미터 쌍을 처리
-            // for-each 루프: 배열의 모든 요소를 순회
-            for (String pair : pairs) {
-                // '='로 키와 값을 분리, 최대 2개로 제한 - 값에 '='가 포함될 수 있음
-                // pair.split(): String의 분할 메서드
-                // "=", 2: '=' 문자로 분할하되 최대 2개 부분으로만 분할
-                String[] keyValue = pair.split("=", 2);
-
-                // keyValue.length: 배열의 길이 속성
-                if (keyValue.length == 2) {
-                    // 키와 값이 모두 있는 경우 - 정상적인 파라미터
-                    // keyValue[0]: 첫 번째 요소 (키)
-                    // keyValue[1]: 두 번째 요소 (값)
-                    params.put(keyValue[0], keyValue[1]);
-                } else if (keyValue.length == 1) {
-                    // 값이 없는 경우 빈 문자열로 설정 - 플래그 형태의 파라미터 지원
-                    params.put(keyValue[0], "");
-                }
-                // 길이가 0인 경우는 무시 - 빈 파라미터는 의미 없음
-            }
-        }
-
-        // 항상 non-null Map 반환 - 호출자가 null 체크할 필요 없음
-        return params;
+        // 값 리스트가 존재하고 비어있지 않으면 첫 번째 값 반환
+        // values != null: null 체크
+        // !values.isEmpty(): 리스트가 비어있지 않은지 확인
+        // values.get(0): 첫 번째 요소 접근
+        return values != null && !values.isEmpty() ? values.get(0) : null;
     }
 
     /**
-     * 특정 쿼리 파라미터 값 반환
+     * 특정 쿼리 파라미터의 모든 값 반환
+     * 같은 이름의 파라미터가 여러 개 있을 때 사용 (?tag=java&tag=spring)
      *
      * @param name 파라미터 이름
-     * @return 파라미터 값 또는 null
+     * @return 파라미터 값들의 배열 (never null)
      */
-    public String getParameter(String name) {
-        // getQueryParameters()에 위임 - 파싱 로직 중복 방지
-        // .get(): Map의 값 조회 메서드
-        return getQueryParameters().get(name);
+    public String[] getParameterValues(String name) {
+        // queryParameters.get(): Map의 값 조회 메서드
+        List<String> values = queryParameters.get(name);
+
+        // 값이 없으면 빈 배열 반환 - null 대신 빈 배열로 일관성 보장
+        if (values == null || values.isEmpty()) {
+            // new String[0]: 크기가 0인 String 배열 생성
+            return new String[0];
+        }
+
+        // List를 배열로 변환
+        // values.toArray(): List를 배열로 변환하는 메서드
+        // new String[0]: 타입 정보를 위한 빈 배열 (크기는 자동 조정됨)
+        return values.toArray(new String[0]);
+    }
+
+    /**
+     * 모든 쿼리 파라미터 이름 반환
+     *
+     * @return 파라미터 이름들의 복사본
+     */
+    public Set<String> getParameterNames() {
+        // 방어적 복사로 반환 - 외부에서 수정해도 원본에 영향 없음
+        // new HashSet<>(): 새로운 HashSet 생성으로 복사
+        // queryParameters.keySet(): Map의 모든 키를 Set으로 반환
+        return new HashSet<>(queryParameters.keySet());
+    }
+
+    /**
+     * 모든 쿼리 파라미터를 Map으로 반환 (호환성 메서드)
+     * 첫 번째 값만 포함하는 단순 Map으로 변환
+     *
+     * @return 쿼리 파라미터의 단순 Map (첫 번째 값만)
+     */
+    public Map<String, String> getQueryParameters() {
+        // 결과를 저장할 Map 생성
+        Map<String, String> result = new HashMap<>();
+
+        // queryParameters.entrySet(): Map의 모든 키-값 쌍을 Set으로 반환
+        for (Map.Entry<String, List<String>> entry : queryParameters.entrySet()) {
+            // entry.getKey(): 파라미터 이름
+            String name = entry.getKey();
+            // entry.getValue(): 파라미터 값들의 리스트
+            List<String> values = entry.getValue();
+
+            // 값이 있으면 첫 번째 값만 저장
+            // !values.isEmpty(): 리스트가 비어있지 않은지 확인
+            if (!values.isEmpty()) {
+                // result.put(): Map의 키-값 쌍 저장 메서드
+                // values.get(0): 첫 번째 요소 접근
+                result.put(name, values.get(0));
+            }
+        }
+
+        return result;
+    }
+
+    /**
+     * 모든 쿼리 파라미터를 다중값 Map으로 반환
+     * 고급 사용자를 위한 메서드 - 같은 이름의 여러 값을 모두 접근 가능
+     *
+     * @return 쿼리 파라미터의 다중값 Map (방어적 복사)
+     */
+    public Map<String, List<String>> getAllQueryParameters() {
+        // 방어적 복사로 반환 - 외부에서 수정해도 원본에 영향 없음
+        Map<String, List<String>> result = new HashMap<>();
+
+        // queryParameters.entrySet(): Map의 모든 키-값 쌍을 Set으로 반환
+        for (Map.Entry<String, List<String>> entry : queryParameters.entrySet()) {
+            // entry.getKey(): 파라미터 이름
+            // entry.getValue(): 파라미터 값들의 리스트
+            // new ArrayList<>(): 리스트의 방어적 복사
+            result.put(entry.getKey(), new ArrayList<>(entry.getValue()));
+        }
+
+        return result;
     }
 
     // ========== 속성 관리 (필터 체인에서 사용) ==========
@@ -458,16 +622,25 @@ public class HttpRequest {
     }
 
     /**
-     * 쿼리 스트링이 있는지 확인
+     * 쿼리 스트링이 있는지 확인 (쿼리 파라미터 기반)
      *
-     * @return 쿼리 스트링이 있으면 true
+     * @return 쿼리 파라미터가 있으면 true
      */
     public boolean hasQueryString() {
-        // null 체크와 빈 문자열 체크 - 의미 있는 쿼리 스트링만 true
-        // queryString != null: null 체크
-        // !queryString.trim().isEmpty(): 공백 제거 후 빈 문자열이 아닌지 확인
-        // queryString.trim(): 앞뒤 공백 제거 메서드
-        return queryString != null && !queryString.trim().isEmpty();
+        // 쿼리 파라미터 맵이 비어있지 않으면 쿼리 스트링이 있는 것으로 판단
+        // !queryParameters.isEmpty(): Map이 비어있지 않은지 확인
+        return !queryParameters.isEmpty();
+    }
+
+    /**
+     * 특정 쿼리 파라미터가 존재하는지 확인
+     *
+     * @param name 파라미터 이름
+     * @return 파라미터가 존재하면 true
+     */
+    public boolean hasParameter(String name) {
+        // queryParameters.containsKey(): Map에 특정 키가 있는지 확인
+        return queryParameters.containsKey(name);
     }
 
     // ========== Object 메서드 오버라이드 ==========
@@ -486,10 +659,11 @@ public class HttpRequest {
         sb.append("HttpRequest{");
         sb.append("method=").append(method);
         sb.append(", path='").append(path).append('\'');
+        sb.append(", version='").append(version).append('\'');
 
-        if (queryString != null) {
-            // 쿼리 스트링이 있을 때만 포함 - 간결성을 위해
-            sb.append(", queryString='").append(queryString).append('\'');
+        // 쿼리 파라미터가 있을 때만 포함 - 간결성을 위해
+        if (!queryParameters.isEmpty()) {
+            sb.append(", queryParams=").append(queryParameters.size());
         }
 
         sb.append(", contentLength=").append(getContentLength());
@@ -526,9 +700,10 @@ public class HttpRequest {
         // Arrays.equals(): 배열의 내용 비교 메서드 (배열은 Arrays.equals 사용)
         return Objects.equals(method, that.method) &&
                 Objects.equals(path, that.path) &&
-                Objects.equals(queryString, that.queryString) &&
+                Objects.equals(version, that.version) &&
                 Objects.equals(headers, that.headers) &&
-                Arrays.equals(body, that.body);
+                Arrays.equals(body, that.body) &&
+                Objects.equals(queryParameters, that.queryParameters);
     }
 
     /**
@@ -539,7 +714,7 @@ public class HttpRequest {
     public int hashCode() {
         // Objects.hash로 여러 필드 조합 - 표준적인 방법
         // Objects.hash(): 여러 객체의 해시코드를 조합하는 유틸리티 메서드
-        int result = Objects.hash(method, path, queryString, headers);
+        int result = Objects.hash(method, path, version, headers, queryParameters);
 
         // 배열은 별도로 해시 코드 계산 후 조합
         // Arrays.hashCode(): 배열의 해시코드를 계산하는 메서드
