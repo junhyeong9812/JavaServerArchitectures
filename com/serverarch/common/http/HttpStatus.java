@@ -70,6 +70,12 @@ public enum HttpStatus {
     // GET만 지원하는 엔드포인트에 POST 요청을 보냈을 때 등
     METHOD_NOT_ALLOWED(405, "Method Not Allowed"),
 
+    // 413 Request Entity Too Large: 요청 엔터티가 너무 큼
+    // 클라이언트가 전송한 요청 바디의 크기가 서버의 제한을 초과했을 때 사용
+    // 파일 업로드나 대용량 POST 데이터에서 크기 제한 초과 시 사용
+    REQUEST_ENTITY_TOO_LARGE(413, "Request Entity Too Large"),
+
+
     // 429 Too Many Requests: 요청 빈도가 너무 높음
     // Enhanced 코드에서 RateLimitMiddleware에 사용
     // 레이트 리미팅에서 요청 한도를 초과했을 때 사용

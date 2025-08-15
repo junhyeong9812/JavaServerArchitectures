@@ -343,7 +343,7 @@ java -cp build/classes:lib/* \
      -Dserver.config=config/eventloop-server.properties \
      # Event Loop 서버 전용 설정 파일
      # 이벤트 루프 스레드 수, 워커 스레드, 셀렉터 타임아웃 등 설정
-     com.com.serverarch.eventloop.EventLoopServer
+     com.com.serverarch.eventloop.core.EventLoopServer
      # Event Loop 서버 메인 클래스 - 단일 스레드 이벤트 기반 처리
 ```
 
