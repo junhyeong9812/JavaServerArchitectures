@@ -4,6 +4,7 @@ import com.serverarch.traditional.HttpResponse;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 
 /**
@@ -356,6 +357,25 @@ public class HttpResponseBuilder {
         response.setBody("");
 
         return response;
+    }
+
+    /**
+     * HttpResponse 객체를 HTTP 프로토콜 형식으로 변환하여 OutputStream에 직접 전송합니다.
+     *
+     * static 메서드로 구현한 이유:
+     * - 상태를 유지하지 않는 순수 함수
+     * - 인스턴스 생성 없이 사용 가능
+     * - 스레드 안전성 보장
+     *
+     * @param outputStream 클라이언트로의 출력 스트림
+     * @param response 전송할 HttpResponse 객체
+     * @throws IOException 전송 실패 시
+     */
+    public static void buildAndSend(OutputStream outputStream, HttpResponse response) throws IOException {
+        // buildResponse()로 바이트 배열 생성 후 스트림에 직접 전송
+        byte[] responseBytes = buildResponse(response);
+        outputStream.write(responseBytes);
+        outputStream.flush(); // 버퍼 플러시로 즉시 전송 보장
     }
 
     /**

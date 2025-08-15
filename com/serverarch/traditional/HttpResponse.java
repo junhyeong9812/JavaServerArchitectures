@@ -119,6 +119,167 @@ public class HttpResponse { // public 클래스 선언 - 다른 패키지에서�
     }
 
     /**
+     * 201 Created 응답 생성 (리소스 생성 성공)
+     * REST API에서 새로운 리소스가 성공적으로 생성되었을 때 사용
+     * HTTP 표준에 따라 POST 요청의 성공적인 리소스 생성을 나타냄
+     *
+     * @return 빈 바디를 가진 201 Created 응답
+     */
+    public static HttpResponse created() { // static 팩토리 메서드 - 201 상태 코드 응답 생성, 매개변수 없음
+        // 201 Created 상태로 새 응답 인스턴스 생성
+        return new HttpResponse(HttpStatus.CREATED); // HttpStatus.CREATED - enum 상수로 201 상태 코드를 나타냄, 생성자 호출
+    }
+
+    /**
+     * 201 Created 응답을 바디와 함께 생성
+     * 새로 생성된 리소스 정보를 응답 바디에 포함하여 반환
+     * 클라이언트가 생성된 리소스의 세부사항을 즉시 확인할 수 있도록 함
+     *
+     * @param body 생성된 리소스의 정보 (보통 JSON 형태)
+     * @return JSON 타입의 201 Created 응답
+     */
+    public static HttpResponse created(String body) { // static 메서드 오버로딩 - String 매개변수를 받는 created 메서드
+        // 201 Created 상태로 응답 생성
+        HttpResponse response = new HttpResponse(HttpStatus.CREATED); // HttpStatus.CREATED로 201 상태 응답 객체 생성
+
+        // 생성된 리소스 정보를 바디에 설정
+        response.setBody(body); // setBody 메서드 호출 - 매개변수 body를 응답 바디로 설정
+
+        // Content-Type을 JSON으로 설정 - API 응답에서 일반적으로 사용
+        response.headers.setContentType("application/json; charset=UTF-8"); // JSON MIME 타입 설정 - 클라이언트가 JSON으로 파싱하도록 지시
+
+        return response; // 완성된 201 Created 응답 반환
+    }
+
+    /**
+     * 201 Created 응답을 Location 헤더와 함께 생성
+     * 새로 생성된 리소스의 위치(URL)를 Location 헤더로 제공
+     * REST API 모범 사례 - 클라이언트가 생성된 리소스에 접근할 수 있는 URL 제공
+     *
+     * @param location 생성된 리소스의 URL
+     * @param body 생성된 리소스의 정보
+     * @return Location 헤더를 포함한 201 Created 응답
+     */
+    public static HttpResponse created(String location, String body) { // 두 개의 String 매개변수를 받는 created 메서드
+        // 바디와 함께 201 Created 응답 생성
+        HttpResponse response = created(body); // 위에서 정의한 created(String body) 메서드 호출 - 메서드 재사용
+
+        // Location 헤더 설정 - 새로 생성된 리소스의 URL 제공
+        response.setHeader("Location", location); // setHeader 메서드 호출 - "Location" 헤더에 리소스 URL 설정
+
+        return response; // Location 헤더가 포함된 201 응답 반환
+    }
+
+    /**
+     * 204 No Content 응답 생성
+     * 요청이 성공했지만 응답 바디가 없는 경우 사용
+     * DELETE, PUT 등의 요청에서 성공적인 처리 후 반환할 데이터가 없을 때 사용
+     * HTTP 표준에 따라 바디를 포함하지 않아야 함
+     *
+     * @return 빈 바디를 가진 204 No Content 응답
+     */
+    public static HttpResponse noContent() { // static 팩토리 메서드 - 204 상태 코드 응답 생성
+        // 204 No Content 상태로 응답 생성
+        HttpResponse response = new HttpResponse(HttpStatus.NO_CONTENT); // HttpStatus.NO_CONTENT - enum 상수로 204 상태 코드를 나타냄
+
+        // 명시적으로 빈 바디 설정 - 204 응답은 바디를 가지지 않음
+        response.setBody(""); // 빈 문자열로 바디 설정 - HTTP 표준에 따라 204는 빈 바디를 가져야 함
+
+        // Content-Length를 0으로 명시적 설정 - 일부 클라이언트 호환성을 위해
+        response.headers.setContentLength(0); // setContentLength(0) - Content-Length 헤더를 0으로 설정
+
+        return response; // 204 No Content 응답 반환
+    }
+
+    // ========== JSON 변환 유틸리티 메서드 ==========
+
+    /**
+     * 객체를 JSON 문자열로 변환하는 유틸리티 메서드
+     * 간단한 Map이나 기본 타입들을 JSON으로 변환할 때 사용
+     * 복잡한 객체의 경우 Jackson이나 Gson 같은 전문 라이브러리 사용 권장
+     *
+     * @param object JSON으로 변환할 객체 (Map, List, String, Number, Boolean 등)
+     * @return JSON 형태의 문자열
+     */
+    public static String mapToJson(Object object) { // public static 메서드 - 객체를 JSON 문자열로 변환하는 유틸리티
+        // null 체크 - 안전한 처리
+        if (object == null) { // 조건문 - object가 null인지 확인
+            return "null"; // null 객체는 "null" 문자열로 반환 - JSON 표준에 따라
+        }
+
+        // 문자열인 경우 따옴표로 감싸기 - JSON 문자열 형식
+        if (object instanceof String) { // instanceof 연산자 - 객체가 String 타입인지 확인
+            return "\"" + escapeJsonString((String) object) + "\""; // 형변환 후 JSON 문자열 이스케이프 처리, 양쪽에 따옴표 추가
+        }
+
+        // 숫자나 불린값은 그대로 문자열로 변환 - JSON에서 따옴표 없이 표현
+        if (object instanceof Number || object instanceof Boolean) { // 논리 연산자 - Number 타입이거나 Boolean 타입인지 확인
+            return object.toString(); // toString() 메서드 - 객체를 문자열로 변환
+        }
+
+        // Map인 경우 JSON 객체 형태로 변환 - {key: value, ...} 형식
+        if (object instanceof Map) { // Map 인터페이스 구현 객체인지 확인
+            Map<?, ?> map = (Map<?, ?>) object; // 형변환 - Object를 Map으로 캐스팅, 와일드카드 타입 사용
+            StringBuilder json = new StringBuilder("{"); // StringBuilder 생성 - JSON 객체 시작 중괄호
+
+            boolean first = true; // boolean 플래그 - 첫 번째 요소인지 확인용
+            for (Map.Entry<?, ?> entry : map.entrySet()) { // for-each 반복문 - Map의 모든 엔트리를 순회
+                if (!first) { // 첫 번째가 아니면 쉼표 추가
+                    json.append(", "); // 쉼표와 공백 추가 - JSON 요소 구분자
+                }
+                // 키-값 쌍을 JSON 형식으로 추가 - "key": value 형태
+                json.append("\"").append(escapeJsonString(String.valueOf(entry.getKey()))).append("\": "); // 키를 문자열로 변환 후 이스케이프, 콜론과 공백 추가
+                json.append(mapToJson(entry.getValue())); // 재귀 호출 - 값을 JSON으로 변환하여 추가
+                first = false; // 첫 번째 플래그 해제
+            }
+            json.append("}"); // JSON 객체 종료 중괄호
+            return json.toString(); // StringBuilder를 문자열로 변환하여 반환
+        }
+
+        // List나 배열인 경우 JSON 배열 형태로 변환 - [element1, element2, ...] 형식
+        if (object instanceof List) { // List 인터페이스 구현 객체인지 확인
+            List<?> list = (List<?>) object; // 형변환 - Object를 List로 캐스팅
+            StringBuilder json = new StringBuilder("["); // JSON 배열 시작 대괄호
+
+            for (int i = 0; i < list.size(); i++) { // for 반복문 - 인덱스 기반 리스트 순회
+                if (i > 0) { // 첫 번째가 아니면 쉼표 추가
+                    json.append(", "); // 배열 요소 구분자
+                }
+                json.append(mapToJson(list.get(i))); // 재귀 호출 - 리스트 요소를 JSON으로 변환
+            }
+            json.append("]"); // JSON 배열 종료 대괄호
+            return json.toString(); // 완성된 JSON 배열 반환
+        }
+
+        // 기타 객체들은 toString()으로 문자열 변환 후 JSON 문자열로 처리
+        return "\"" + escapeJsonString(object.toString()) + "\""; // toString() 호출 후 JSON 문자열로 이스케이프
+    }
+
+    /**
+     * JSON 문자열 내의 특수 문자들을 이스케이프 처리
+     * JSON 파싱 오류와 보안 문제를 방지하기 위한 필수 처리
+     *
+     * @param str 이스케이프할 문자열
+     * @return JSON에서 안전한 이스케이프된 문자열
+     */
+    private static String escapeJsonString(String str) { // private static 메서드 - JSON 문자열 이스케이프 유틸리티
+        // null 체크 - 안전한 처리
+        if (str == null) { // null 확인 조건문
+            return ""; // null이면 빈 문자열 반환
+        }
+
+        // JSON에서 특별한 의미를 가지는 문자들을 이스케이프 - JSON 표준 준수
+        return str.replace("\\", "\\\\")  // 백슬래시 이스케이프 - 가장 먼저 처리 (다른 이스케이프에 영향 주지 않도록)
+                .replace("\"", "\\\"")    // 따옴표 이스케이프 - JSON 문자열 구분자와 충돌 방지
+                .replace("\b", "\\b")     // 백스페이스 문자 이스케이프
+                .replace("\f", "\\f")     // 폼 피드 문자 이스케이프
+                .replace("\n", "\\n")     // 개행 문자 이스케이프 - 줄바꿈을 JSON에서 안전하게 표현
+                .replace("\r", "\\r")     // 캐리지 리턴 이스케이프
+                .replace("\t", "\\t");    // 탭 문자 이스케이프
+        // replace() 메서드 체이닝 - 각 특수 문자를 순서대로 이스케이프 처리
+    }
+
+    /**
      * JSON 응답 생성
      * API 서버에서 가장 많이 사용되는 응답 형태
      *

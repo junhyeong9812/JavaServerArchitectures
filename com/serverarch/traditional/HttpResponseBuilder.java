@@ -30,15 +30,15 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 
 /**
- * HTTP 응답 생성 전담 클래스 (수정 버전)
- * HttpResponse 객체를 바이트 배열로 변환하여 클라이언트에게 전송할 수 있는 형태로 만듦
- *
- * 설계 원칙:
- * 1. HttpResponse의 byte[] body와 완벽 호환
- * 2. HTTP/1.1 표준 준수한 응답 포맷 생성
- * 3. 기본 헤더 자동 추가로 표준 준수 보장
- * 4. 에러 상황에 대한 안전한 폴백 제공
- */
+* HTTP 응답 생성 전담 클래스 (수정 버전)
+* HttpResponse 객체를 바이트 배열로 변환하여 클라이언트에게 전송할 수 있는 형태로 만듦
+*
+* 설계 원칙:
+* 1. HttpResponse의 byte[] body와 완벽 호환
+* 2. HTTP/1.1 표준 준수한 응답 포맷 생성
+* 3. 기본 헤더 자동 추가로 표준 준수 보장
+* 4. 에러 상황에 대한 안전한 폴백 제공
+*/
 public class HttpResponseBuilder {
     // Logger 인스턴스 생성 - 이 클래스의 모든 로그 메시지 담당
     // Logger.getLogger(): 지정된 클래스 이름으로 로거 인스턴스 반환
@@ -67,6 +67,25 @@ public class HttpResponseBuilder {
     // Locale.ENGLISH: 영어 로케일 사용으로 월, 요일 이름을 영어로 출력
     private static final DateTimeFormatter HTTP_DATE_FORMAT =
             DateTimeFormatter.ofPattern("EEE, dd MMM yyyy HH:mm:ss 'GMT'", Locale.ENGLISH);
+
+    /**
+     * HttpResponse 객체를 HTTP 프로토콜 형식으로 변환하여 OutputStream에 직접 전송합니다.
+     *
+     * static 메서드로 구현한 이유:
+     * - 상태를 유지하지 않는 순수 함수
+     * - 인스턴스 생성 없이 사용 가능
+     * - 스레드 안전성 보장
+     *
+     * @param outputStream 클라이언트로의 출력 스트림
+     * @param response 전송할 HttpResponse 객체
+     * @throws IOException 전송 실패 시
+     */
+    public static void buildAndSend(OutputStream outputStream, HttpResponse response) throws IOException {
+        // buildResponse()로 바이트 배열 생성 후 스트림에 직접 전송
+        byte[] responseBytes = buildResponse(response);
+        outputStream.write(responseBytes);
+        outputStream.flush(); // 버퍼 플러시로 즉시 전송 보장
+    }
 
     /**
      * HttpResponse 객체를 바이트 배열로 변환
