@@ -1,5 +1,82 @@
 # JavaServerArchitectures - Phase 1 완성
 
+## 📁 프로젝트 구조 생성
+
+### Windows PowerShell에서 폴더 및 파일 생성
+
+#### 1. 폴더 구조 생성
+```powershell
+New-Item -ItemType Directory -Path "server\core\http" -Force
+New-Item -ItemType Directory -Path "server\core\routing" -Force
+New-Item -ItemType Directory -Path "server\core\mini" -Force
+New-Item -ItemType Directory -Path "server\examples" -Force
+```
+
+#### 2. HTTP 코어 파일들 생성
+```powershell
+New-Item -ItemType File -Path "server\core\http\HttpMethod.java" -Force
+New-Item -ItemType File -Path "server\core\http\HttpStatus.java" -Force
+New-Item -ItemType File -Path "server\core\http\HttpHeaders.java" -Force
+New-Item -ItemType File -Path "server\core\http\HttpParser.java" -Force
+New-Item -ItemType File -Path "server\core\http\HttpRequest.java" -Force
+New-Item -ItemType File -Path "server\core\http\HttpResponse.java" -Force
+```
+
+#### 3. 라우팅 파일들 생성
+```powershell
+New-Item -ItemType File -Path "server\core\routing\RouteHandler.java" -Force
+New-Item -ItemType File -Path "server\core\routing\Route.java" -Force
+New-Item -ItemType File -Path "server\core\routing\RouteMatchResult.java" -Force
+New-Item -ItemType File -Path "server\core\routing\ResourceHandler.java" -Force
+New-Item -ItemType File -Path "server\core\routing\Router.java" -Force
+```
+
+#### 4. 미니 서블릿 파일들 생성
+```powershell
+New-Item -ItemType File -Path "server\core\mini\MiniServlet.java" -Force
+New-Item -ItemType File -Path "server\core\mini\MiniAsyncServlet.java" -Force
+New-Item -ItemType File -Path "server\core\mini\MiniContext.java" -Force
+New-Item -ItemType File -Path "server\core\mini\MiniRequest.java" -Force
+New-Item -ItemType File -Path "server\core\mini\MiniResponse.java" -Force
+```
+
+#### 5. 예시 파일들 생성
+```powershell
+New-Item -ItemType File -Path "server\examples\HelloWorldServlet.java" -Force
+New-Item -ItemType File -Path "server\examples\UserApiServlet.java" -Force
+New-Item -ItemType File -Path "server\examples\CoreSystemTest.java" -Force
+```
+
+### 최종 폴더 구조
+```
+JavaServerArchitectures/
+├── server/
+│   ├── core/
+│   │   ├── http/
+│   │   │   ├── HttpMethod.java
+│   │   │   ├── HttpStatus.java
+│   │   │   ├── HttpHeaders.java
+│   │   │   ├── HttpParser.java
+│   │   │   ├── HttpRequest.java
+│   │   │   └── HttpResponse.java
+│   │   ├── routing/
+│   │   │   ├── RouteHandler.java
+│   │   │   ├── Route.java
+│   │   │   ├── RouteMatchResult.java
+│   │   │   ├── ResourceHandler.java
+│   │   │   └── Router.java
+│   │   └── mini/
+│   │       ├── MiniServlet.java
+│   │       ├── MiniAsyncServlet.java
+│   │       ├── MiniContext.java
+│   │       ├── MiniRequest.java
+│   │       └── MiniResponse.java
+│   └── examples/
+│       ├── HelloWorldServlet.java
+│       ├── UserApiServlet.java
+│       └── CoreSystemTest.java
+```
+
 ## 🎯 완성된 핵심 컴포넌트
 
 ### 1. HTTP 코어 프로토콜 처리 ✅
@@ -98,12 +175,43 @@ protected CompletableFuture<HttpResponse> doGetAsync(MiniRequest req, MiniRespon
 }
 ```
 
+## 🛠️ 컴파일 및 실행 방법 (순수 자바)
+
+### 1. 코드 작성 완료 후 컴파일
+```bash
+# 모든 자바 파일 컴파일 (프로젝트 루트에서)
+javac server\core\http\*.java
+javac server\core\routing\*.java  
+javac server\core\mini\*.java
+javac server\examples\*.java
+
+# 또는 한 번에 모든 파일 컴파일
+javac server\**\*.java
+```
+
+### 2. 메인 클래스 실행
+```bash
+java server.examples.CoreSystemTest
+```
+
+### 3. 개별 파일 편집
+```powershell
+# 메모장으로 열기
+notepad server\core\http\HttpMethod.java
+
+# VS Code로 열기 (설치되어 있다면)
+code server\core\http\HttpMethod.java
+
+# 또는 전체 프로젝트를 VS Code로 열기
+code .
+```
+
 ## 🚀 실행 방법
 
 ### 1. 기본 테스트 실행
 ```bash
-# 컴파일
-javac -cp . server/examples/CoreSystemTest.java server/core/http/*.java server/core/routing/*.java server/core/mini/*.java server/examples/*.java
+# 컴파일 (Windows CMD/PowerShell)
+javac server\core\http\*.java server\core\routing\*.java server\core\mini\*.java server\examples\*.java
 
 # 실행
 java server.examples.CoreSystemTest
