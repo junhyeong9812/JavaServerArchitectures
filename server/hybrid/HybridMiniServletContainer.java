@@ -73,7 +73,7 @@ public class HybridMiniServletContainer {
      * 기본 라우트 핸들러 등록
      */
     private void registerDefaultHandler() {
-        router.addRoute("*", "*", this::handleServletRequest);
+        router.all("*", this::handleServletRequest);
         logger.debug("기본 서블릿 핸들러 등록 완료");
     }
 
@@ -100,7 +100,8 @@ public class HybridMiniServletContainer {
             // 서블릿 풀 초기화
             initializeServletPool(name, servlet);
 
-            logger.info("서블릿 등록 완료: {} (패턴: {})", name, Arrays.toString(patterns));
+            logger.info("서블릿 등록 완료: {} (타입: {}, 패턴: {})",
+                    name, servlet.getClass().getSimpleName(), Arrays.toString(patterns));
 
         } catch (Exception e) {
             logger.error("서블릿 등록 실패: {}", name, e);
@@ -163,8 +164,10 @@ public class HybridMiniServletContainer {
                 );
             }
 
-            // 2. 서블릿 타입에 따른 처리 분기
-            if (servletInfo.getServlet() instanceof MiniAsyncServlet) {
+            // 2. 서블릿 타입에 따른 처리 분기 (간단한 instanceof 사용)
+            MiniServlet servlet = servletInfo.getServlet();
+
+            if (servlet instanceof MiniAsyncServlet) {
                 return handleAsyncServlet(request, servletInfo);
             } else {
                 return handleSyncServlet(request, servletInfo);
@@ -180,7 +183,7 @@ public class HybridMiniServletContainer {
     }
 
     /**
-     * 비동기 서블릿 처리
+     * Hybrid 비동기 서블릿 처리
      */
     private CompletableFuture<HttpResponse> handleAsyncServlet(HttpRequest request, ServletInfo servletInfo) {
         asyncRequests.incrementAndGet();
@@ -198,7 +201,8 @@ public class HybridMiniServletContainer {
             MiniRequest miniRequest = new MiniRequest(request, globalContext);
             MiniResponse miniResponse = new MiniResponse();
 
-            CompletableFuture<Void> servletFuture = asyncServlet.serviceAsync(miniRequest, miniResponse);
+            // MiniAsyncServlet의 processAsync 메서드 호출
+            CompletableFuture<Void> servletFuture = asyncServlet.processAsync(miniRequest, miniResponse);
 
             final MiniAsyncServlet finalServlet = asyncServlet;
 
@@ -233,14 +237,14 @@ public class HybridMiniServletContainer {
     }
 
     /**
-     * 동기 서블릿 처리 (하이브리드 방식)
+     * Core 동기 서블릿 처리 (하이브리드 방식)
      */
     private CompletableFuture<HttpResponse> handleSyncServlet(HttpRequest request, ServletInfo servletInfo) {
         logger.debug("동기 서블릿 하이브리드 처리 시작 - 서블릿: {}, URI: {}",
                 servletInfo.getName(), request.getPath());
 
         RouteHandler servletHandler = (req) -> {
-            MiniServlet servlet = borrowServletFromPool(servletInfo.getName());
+            MiniServlet servlet = (MiniServlet) borrowServletFromPool(servletInfo.getName());
 
             if (servlet == null) {
                 servlet = servletInfo.getServlet();

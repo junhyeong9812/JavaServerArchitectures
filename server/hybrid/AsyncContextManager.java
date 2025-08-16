@@ -16,33 +16,27 @@ import java.util.*;
  * 2. 스레드간 요청 상태 공유
  * 3. 컨텍스트 생명주기 관리
  * 4. 메모리 누수 방지를 위한 자동 정리
- *
- * 하이브리드 서버에서 중요한 이유:
- * - NIO 스레드에서 읽은 요청을 Worker 스레드로 전달
- * - I/O 대기시 스레드 해제 후 나중에 재개
- * - 요청별 상태 및 메타데이터 추적
  */
 public class AsyncContextManager {
 
     private static final Logger logger = LoggerFactory.getLogger(AsyncContextManager.class);
 
     // === 컨텍스트 저장소 ===
-    // ConcurrentHashMap - 멀티스레드 환경에서 안전한 맵
     private final ConcurrentMap<String, AsyncContext> contexts = new ConcurrentHashMap<>();
 
     // === 컨텍스트 ID 생성 ===
-    private final AtomicLong contextIdGenerator = new AtomicLong(0);    // 유니크 ID 생성기
-    private final String nodeId;                                        // 노드 식별자 (클러스터 환경 대비)
+    private final AtomicLong contextIdGenerator = new AtomicLong(0);
+    private final String nodeId;
 
     // === 타임아웃 관리 ===
-    private final ScheduledExecutorService cleanupExecutor;             // 정리 스케줄러
-    private final long defaultTimeoutMs;                                // 기본 타임아웃 (밀리초)
-    private final AtomicInteger activeContexts = new AtomicInteger(0);  // 활성 컨텍스트 수
+    private final ScheduledExecutorService cleanupExecutor;
+    private final long defaultTimeoutMs;
+    private final AtomicInteger activeContexts = new AtomicInteger(0);
 
     // === 통계 ===
-    private final AtomicLong createdContexts = new AtomicLong(0);       // 생성된 컨텍스트 수
-    private final AtomicLong expiredContexts = new AtomicLong(0);       // 만료된 컨텍스트 수
-    private final AtomicLong cleanedContexts = new AtomicLong(0);       // 정리된 컨텍스트 수
+    private final AtomicLong createdContexts = new AtomicLong(0);
+    private final AtomicLong expiredContexts = new AtomicLong(0);
+    private final AtomicLong cleanedContexts = new AtomicLong(0);
 
     /**
      * AsyncContextManager 생성자
@@ -53,27 +47,20 @@ public class AsyncContextManager {
 
     /**
      * AsyncContextManager 생성자 (타임아웃 지정)
-     *
-     * @param timeoutMs 타임아웃 시간 (밀리초)
      */
     public AsyncContextManager(long timeoutMs) {
         this.defaultTimeoutMs = timeoutMs;
 
-        // 노드 ID 생성 (UUID 기반)
         this.nodeId = UUID.randomUUID().toString().substring(0, 8);
 
-        // 정리 스케줄러 초기화
-        // newScheduledThreadPool(1) - 단일 스레드 스케줄러 생성
         this.cleanupExecutor = Executors.newScheduledThreadPool(1,
                 r -> new Thread(r, "AsyncContext-Cleanup"));
 
-        // 정기적으로 만료된 컨텍스트 정리 (10초마다)
-        // scheduleAtFixedRate() - 고정 간격으로 반복 실행
         this.cleanupExecutor.scheduleAtFixedRate(
-                this::cleanupExpiredContexts,  // 실행할 작업
-                10,                            // 초기 지연 (초)
-                10,                            // 실행 간격 (초)
-                TimeUnit.SECONDS               // 시간 단위
+                this::cleanupExpiredContexts,
+                10,
+                10,
+                TimeUnit.SECONDS
         );
 
         logger.info("AsyncContextManager 초기화 완료 - 노드: {}, 타임아웃: {}ms",
@@ -82,33 +69,24 @@ public class AsyncContextManager {
 
     /**
      * 새로운 비동기 컨텍스트 생성
-     *
-     * @param request HTTP 요청
-     * @return 컨텍스트 ID
      */
     public String createContext(HttpRequest request) {
-        // 유니크한 컨텍스트 ID 생성
-        // incrementAndGet() - 원자적으로 증가 후 값 반환
         long contextNumber = contextIdGenerator.incrementAndGet();
         String contextId = String.format("%s-%d", nodeId, contextNumber);
 
-        // 현재 시간 기록 (타임아웃 계산용)
         long createdTime = System.currentTimeMillis();
         long expireTime = createdTime + defaultTimeoutMs;
 
-        // AsyncContext 객체 생성
         AsyncContext context = new AsyncContext(
                 contextId,
                 request,
                 createdTime,
                 expireTime,
-                Thread.currentThread().getName() // 생성 스레드 기록
+                Thread.currentThread().getName()
         );
 
-        // 컨텍스트 저장
         contexts.put(contextId, context);
 
-        // 통계 업데이트
         activeContexts.incrementAndGet();
         createdContexts.incrementAndGet();
 
@@ -120,9 +98,6 @@ public class AsyncContextManager {
 
     /**
      * 컨텍스트 조회
-     *
-     * @param contextId 컨텍스트 ID
-     * @return AsyncContext 또는 null
      */
     public AsyncContext getContext(String contextId) {
         AsyncContext context = contexts.get(contextId);
@@ -132,31 +107,23 @@ public class AsyncContextManager {
             return null;
         }
 
-        // 만료 여부 확인
         if (context.isExpired()) {
             logger.debug("만료된 컨텍스트 - ID: {}", contextId);
             removeContext(contextId);
             return null;
         }
 
-        // 마지막 접근 시간 업데이트
         context.updateLastAccess();
-
         return context;
     }
 
     /**
      * 컨텍스트 제거
-     *
-     * @param contextId 컨텍스트 ID
-     * @return 제거된 컨텍스트 또는 null
      */
     public AsyncContext removeContext(String contextId) {
-        // remove() - 맵에서 키-값 제거하고 이전 값 반환
         AsyncContext removed = contexts.remove(contextId);
 
         if (removed != null) {
-            // 활성 컨텍스트 수 감소
             activeContexts.decrementAndGet();
 
             logger.debug("컨텍스트 제거 완료 - ID: {}, 생존시간: {}ms",
@@ -168,10 +135,6 @@ public class AsyncContextManager {
 
     /**
      * 컨텍스트 상태 업데이트
-     *
-     * @param contextId 컨텍스트 ID
-     * @param state 새로운 상태
-     * @param data 상태 데이터
      */
     public void updateContextState(String contextId, AsyncContext.State state, Object data) {
         AsyncContext context = contexts.get(contextId);
@@ -187,10 +150,6 @@ public class AsyncContextManager {
 
     /**
      * 컨텍스트에 속성 설정
-     *
-     * @param contextId 컨텍스트 ID
-     * @param key 속성 키
-     * @param value 속성 값
      */
     public void setContextAttribute(String contextId, String key, Object value) {
         AsyncContext context = contexts.get(contextId);
@@ -205,10 +164,6 @@ public class AsyncContextManager {
 
     /**
      * 컨텍스트 속성 조회
-     *
-     * @param contextId 컨텍스트 ID
-     * @param key 속성 키
-     * @return 속성 값 또는 null
      */
     public Object getContextAttribute(String contextId, String key) {
         AsyncContext context = contexts.get(contextId);
@@ -223,14 +178,10 @@ public class AsyncContextManager {
 
     /**
      * 특정 상태의 컨텍스트들 조회
-     *
-     * @param state 찾을 상태
-     * @return 해당 상태의 컨텍스트 리스트
      */
     public List<AsyncContext> getContextsByState(AsyncContext.State state) {
         List<AsyncContext> result = new ArrayList<>();
 
-        // values() - 맵의 모든 값 조회
         for (AsyncContext context : contexts.values()) {
             if (context.getState() == state && !context.isExpired()) {
                 result.add(context);
@@ -241,22 +192,19 @@ public class AsyncContextManager {
     }
 
     /**
-     * 만료된 컨텍스트 정리 (스케줄러에서 주기적 실행)
+     * 만료된 컨텍스트 정리
      */
     private void cleanupExpiredContexts() {
         long currentTime = System.currentTimeMillis();
         int cleanedCount = 0;
 
-        // Iterator를 사용한 안전한 순회 및 제거
         Iterator<Map.Entry<String, AsyncContext>> iterator = contexts.entrySet().iterator();
 
         while (iterator.hasNext()) {
             Map.Entry<String, AsyncContext> entry = iterator.next();
             AsyncContext context = entry.getValue();
 
-            // 만료 조건 확인
             if (context.isExpired(currentTime)) {
-                // Iterator.remove() - 안전한 제거
                 iterator.remove();
 
                 activeContexts.decrementAndGet();
@@ -277,9 +225,6 @@ public class AsyncContextManager {
 
     /**
      * 특정 시간보다 오래된 컨텍스트 정리
-     *
-     * @param olderThanMs 기준 시간 (밀리초)
-     * @return 정리된 컨텍스트 수
      */
     public int cleanupOldContexts(long olderThanMs) {
         long cutoffTime = System.currentTimeMillis() - olderThanMs;
@@ -338,7 +283,6 @@ public class AsyncContextManager {
      * 현재 활성 컨텍스트 ID 목록 조회
      */
     public Set<String> getActiveContextIds() {
-        // keySet() - 키 집합 반환, ConcurrentHashMap이므로 스레드 안전
         return new HashSet<>(contexts.keySet());
     }
 
@@ -349,16 +293,13 @@ public class AsyncContextManager {
         logger.info("AsyncContextManager 종료 시작...");
 
         try {
-            // 정리 스케줄러 종료
             cleanupExecutor.shutdown();
 
-            // 종료 대기 (최대 5초)
             if (!cleanupExecutor.awaitTermination(5, TimeUnit.SECONDS)) {
                 logger.warn("정리 스케줄러 강제 종료");
                 cleanupExecutor.shutdownNow();
             }
 
-            // 남은 컨텍스트 정리
             int remainingContexts = contexts.size();
             if (remainingContexts > 0) {
                 logger.info("남은 컨텍스트 정리 중... 수: {}", remainingContexts);
@@ -416,7 +357,6 @@ public class AsyncContextManager {
 
     /**
      * 비동기 컨텍스트 클래스
-     * 개별 HTTP 요청의 비동기 처리 상태를 관리
      */
     public static class AsyncContext {
 
@@ -433,25 +373,24 @@ public class AsyncContextManager {
         }
 
         // === 기본 정보 ===
-        private final String id;                           // 컨텍스트 ID
-        private final HttpRequest request;                 // 원본 HTTP 요청
-        private final long createdTime;                    // 생성 시간
-        private final long expireTime;                     // 만료 시간
-        private final String createdThread;                // 생성 스레드
+        private final String id;
+        private final HttpRequest request;
+        private final long createdTime;
+        private final long expireTime;
+        private final String createdThread;
 
         // === 상태 관리 ===
-        private volatile State state = State.CREATED;      // 현재 상태
-        private volatile Object stateData;                 // 상태별 데이터
-        private volatile long lastAccessTime;              // 마지막 접근 시간
+        private volatile State state = State.CREATED;
+        private volatile Object stateData;
+        private volatile long lastAccessTime;
 
         // === 속성 저장소 ===
-        // ConcurrentHashMap - 스레드 안전한 속성 저장
         private final ConcurrentMap<String, Object> attributes = new ConcurrentHashMap<>();
 
         // === 처리 메타데이터 ===
-        private volatile String processingThread;          // 처리 스레드
-        private volatile long processingStartTime;         // 처리 시작 시간
-        private volatile Throwable lastError;              // 마지막 오류
+        private volatile String processingThread;
+        private volatile long processingStartTime;
+        private volatile Throwable lastError;
 
         /**
          * AsyncContext 생성자

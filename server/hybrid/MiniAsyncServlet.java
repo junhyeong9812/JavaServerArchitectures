@@ -5,108 +5,21 @@ import server.core.http.*;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * 하이브리드 서버용 비동기 서블릿 인터페이스
+ * 하이브리드 서버용 비동기 서블릿 추상 클래스
  *
- * Core의 MiniServlet을 확장하여 비동기 처리 지원
- * 기존 Core 시스템과 호환성 유지
+ * Core의 MiniServlet을 상속받아 비동기 처리 기능만 추가
+ * 기존 동기 메서드들은 그대로 유지하고, 비동기 버전만 새로 제공
  */
-public interface MiniAsyncServlet extends MiniServlet {
+public abstract class MiniAsyncServlet extends MiniServlet {
 
     /**
-     * 비동기 요청 처리 메서드
-     * 하이브리드 서버에서 호출됨
+     * 비동기 요청 처리 메서드 - 하이브리드 서버 전용
      *
      * @param request MiniRequest 래퍼
      * @param response MiniResponse 래퍼
-     * @return CompletableFuture<Void> 비동기 처리 결과
+     * @return CompletableFuture<Void> 비동기 처리 완료 시그널
      */
-    CompletableFuture<Void> serviceAsync(MiniRequest request, MiniResponse response);
-
-    /**
-     * 기본 service 메서드 오버라이드
-     * 동기 호출시 비동기 메서드를 동기적으로 처리
-     */
-    @Override
-    default HttpResponse service(MiniRequest request, MiniResponse response) throws Exception {
-        try {
-            // 비동기 메서드를 동기적으로 실행
-            CompletableFuture<Void> future = serviceAsync(request, response);
-            future.get(); // 블로킹 대기
-            return response.build();
-        } catch (Exception e) {
-            throw new RuntimeException("Async servlet execution failed", e);
-        }
-    }
-
-    /**
-     * 기본 HTTP 메서드들을 비동기로 처리
-     */
-    default CompletableFuture<Void> doGetAsync(MiniRequest request, MiniResponse response) {
-        return CompletableFuture.runAsync(() -> {
-            try {
-                doGet(request, response);
-            } catch (Exception e) {
-                response.sendError(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
-            }
-        });
-    }
-
-    default CompletableFuture<Void> doPostAsync(MiniRequest request, MiniResponse response) {
-        return CompletableFuture.runAsync(() -> {
-            try {
-                doPost(request, response);
-            } catch (Exception e) {
-                response.sendError(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
-            }
-        });
-    }
-
-    default CompletableFuture<Void> doPutAsync(MiniRequest request, MiniResponse response) {
-        return CompletableFuture.runAsync(() -> {
-            try {
-                doPut(request, response);
-            } catch (Exception e) {
-                response.sendError(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
-            }
-        });
-    }
-
-    default CompletableFuture<Void> doDeleteAsync(MiniRequest request, MiniResponse response) {
-        return CompletableFuture.runAsync(() -> {
-            try {
-                doDelete(request, response);
-            } catch (Exception e) {
-                response.sendError(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
-            }
-        });
-    }
-
-    default CompletableFuture<Void> doHeadAsync(MiniRequest request, MiniResponse response) {
-        return doGetAsync(request, response)
-                .thenRun(() -> response.clearBody()); // HEAD는 body가 없음
-    }
-
-    default CompletableFuture<Void> doOptionsAsync(MiniRequest request, MiniResponse response) {
-        return CompletableFuture.runAsync(() -> {
-            response.setStatus(HttpStatus.OK);
-            response.setHeader("Allow", "GET, POST, PUT, DELETE, HEAD, OPTIONS, PATCH");
-        });
-    }
-
-    default CompletableFuture<Void> doPatchAsync(MiniRequest request, MiniResponse response) {
-        return CompletableFuture.runAsync(() -> {
-            try {
-                doPatch(request, response);
-            } catch (Exception e) {
-                response.sendError(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
-            }
-        });
-    }
-
-    /**
-     * 기본 serviceAsync 구현 - HTTP 메서드별 라우팅
-     */
-    default CompletableFuture<Void> serviceAsync(MiniRequest request, MiniResponse response) {
+    public CompletableFuture<Void> processAsync(MiniRequest request, MiniResponse response) {
         HttpMethod method = request.getMethod();
 
         switch (method) {
@@ -130,5 +43,74 @@ public interface MiniAsyncServlet extends MiniServlet {
                     response.setHeader("Allow", "GET, POST, PUT, DELETE, HEAD, OPTIONS, PATCH");
                 });
         }
+    }
+
+    /**
+     * HTTP 메서드별 비동기 처리 메서드들
+     * 서브클래스에서 필요한 메서드만 오버라이드
+     */
+    protected CompletableFuture<Void> doGetAsync(MiniRequest request, MiniResponse response) {
+        return CompletableFuture.runAsync(() -> {
+            try {
+                doGet(request, response);
+            } catch (Exception e) {
+                response.sendError(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
+            }
+        });
+    }
+
+    protected CompletableFuture<Void> doPostAsync(MiniRequest request, MiniResponse response) {
+        return CompletableFuture.runAsync(() -> {
+            try {
+                doPost(request, response);
+            } catch (Exception e) {
+                response.sendError(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
+            }
+        });
+    }
+
+    protected CompletableFuture<Void> doPutAsync(MiniRequest request, MiniResponse response) {
+        return CompletableFuture.runAsync(() -> {
+            try {
+                doPut(request, response);
+            } catch (Exception e) {
+                response.sendError(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
+            }
+        });
+    }
+
+    protected CompletableFuture<Void> doDeleteAsync(MiniRequest request, MiniResponse response) {
+        return CompletableFuture.runAsync(() -> {
+            try {
+                doDelete(request, response);
+            } catch (Exception e) {
+                response.sendError(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
+            }
+        });
+    }
+
+    protected CompletableFuture<Void> doHeadAsync(MiniRequest request, MiniResponse response) {
+        return doGetAsync(request, response)
+                .thenRun(() -> response.clearBody()); // HEAD는 body가 없음
+    }
+
+    protected CompletableFuture<Void> doOptionsAsync(MiniRequest request, MiniResponse response) {
+        return CompletableFuture.runAsync(() -> {
+            try {
+                doOptions(request, response);
+            } catch (Exception e) {
+                response.sendError(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
+            }
+        });
+    }
+
+    protected CompletableFuture<Void> doPatchAsync(MiniRequest request, MiniResponse response) {
+        return CompletableFuture.runAsync(() -> {
+            try {
+                doPatch(request, response);
+            } catch (Exception e) {
+                response.sendError(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
+            }
+        });
     }
 }

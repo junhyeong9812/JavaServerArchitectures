@@ -1,17 +1,16 @@
-package server.test;
+package server.hybrid;
 
 import server.core.logging.Logger;
 import server.core.logging.LoggerFactory;
 import server.core.http.*;
 import server.core.routing.*;
 import server.core.mini.*;
-import server.hybrid.*;
 
 import java.io.IOException;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * 하이브리드 서버 테스트 클래스
+ * 하이브리드 서버 테스트 및 런처 클래스
  *
  * 테스트 목적:
  * 1. 하이브리드 서버 기본 동작 확인
@@ -24,9 +23,67 @@ public class HybridServerTest {
     private static final Logger logger = LoggerFactory.getLogger(HybridServerTest.class);
 
     public static void main(String[] args) {
-        // 로거 설정 (테스트 모드)
-        LoggerFactory.configureForTesting();
+        if (args.length > 0 && "test".equals(args[0])) {
+            // 테스트 모드
+            runAllTests();
+        } else {
+            // 서버 실행 모드
+            runServer();
+        }
+    }
 
+    /**
+     * 실제 서버 실행 (기본 모드)
+     */
+    private static void runServer() {
+        logger.info("=== HybridServer 시작 ===");
+
+        try {
+            HybridServer server = new HybridServer(8081);
+
+            // 실제 서블릿들 등록
+            registerServlets(server.getServletContainer());
+
+            // 기본 라우트 설정
+            setupBasicRoutes(server.getRouter());
+
+            // 컨텍스트 스위칭 라우트 설정
+            setupContextSwitchingRoutes(server.getRouter(), server.getSwitchingHandler());
+
+            // 서버 시작
+            server.start();
+
+            logger.info("HybridServer 실행 중 - http://localhost:8081");
+            logger.info("사용 가능한 엔드포인트:");
+            logger.info("  GET  http://localhost:8081/hello");
+            logger.info("  GET  http://localhost:8081/api/users");
+            logger.info("  POST http://localhost:8081/api/users");
+            logger.info("  GET  http://localhost:8081/static/test.js");
+            logger.info("  GET  http://localhost:8081/upload");
+            logger.info("  GET  http://localhost:8081/load-test");
+            logger.info("  GET  http://localhost:8081/test/db");
+            logger.info("  GET  http://localhost:8081/test/api");
+            logger.info("\nCtrl+C로 서버 종료\n");
+
+            // 종료 훅 등록
+            Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                logger.info("서버 종료 중...");
+                server.stop();
+            }));
+
+            // 메인 스레드 대기
+            Thread.currentThread().join();
+
+        } catch (Exception e) {
+            logger.error("서버 실행 실패", e);
+            System.exit(1);
+        }
+    }
+
+    /**
+     * 모든 테스트 실행
+     */
+    private static void runAllTests() {
         try {
             // 하이브리드 서버 테스트 실행
             runBasicTests();
@@ -43,12 +100,34 @@ public class HybridServerTest {
     }
 
     /**
+     * 실제 서블릿들 등록
+     */
+    private static void registerServlets(HybridMiniServletContainer container) {
+        // Hello World 비동기 서블릿
+        container.registerServlet("HelloWorld", new HelloWorldAsyncServlet(), "/hello");
+
+        // User API 비동기 서블릿
+        container.registerServlet("UserApi", new UserApiAsyncServlet(), "/api/users/*");
+
+        // 정적 파일 비동기 서블릿
+        container.registerServlet("StaticFile", new StaticFileAsyncServlet(), "/static/*");
+
+        // 파일 업로드 비동기 서블릿
+        container.registerServlet("FileUpload", new FileUploadAsyncServlet(), "/upload");
+
+        // 로드 테스트 비동기 서블릿
+        container.registerServlet("LoadTest", new LoadTestAsyncServlet(), "/load-test");
+
+        logger.info("모든 비동기 서블릿 등록 완료");
+    }
+
+    /**
      * 기본 기능 테스트
      */
     private static void runBasicTests() throws IOException {
         logger.info("=== 기본 기능 테스트 시작 ===");
 
-        HybridServer server = new HybridServer(8081);
+        HybridServer server = new HybridServer(18081);
 
         // 기본 라우트 설정
         setupBasicRoutes(server.getRouter());
@@ -80,7 +159,7 @@ public class HybridServerTest {
     private static void runContextSwitchingTests() throws IOException {
         logger.info("=== 컨텍스트 스위칭 테스트 시작 ===");
 
-        HybridServer server = new HybridServer(8082);
+        HybridServer server = new HybridServer(18082);
         ContextSwitchingHandler switchingHandler = server.getSwitchingHandler();
 
         // 컨텍스트 스위칭 라우트 설정
@@ -119,20 +198,20 @@ public class HybridServerTest {
     private static void runAsyncServletTests() throws IOException {
         logger.info("=== 비동기 서블릿 테스트 시작 ===");
 
-        HybridServer server = new HybridServer(8083);
+        HybridServer server = new HybridServer(18083);
         HybridMiniServletContainer container = server.getServletContainer();
 
-        // 테스트 서블릿 등록
-        container.registerServlet("TestAsyncServlet", new TestAsyncServlet(), "/test/async");
-        container.registerServlet("TestSyncServlet", new TestSyncServlet(), "/test/sync");
+        // 실제 서블릿들 등록
+        container.registerServlet("HelloWorldAsync", new HelloWorldAsyncServlet(), "/test/hello");
+        container.registerServlet("UserApiAsync", new UserApiAsyncServlet(), "/test/users");
 
         try {
             server.start();
             Thread.sleep(1000);
 
             // 서블릿 등록 확인
-            assert container.getServletNames().contains("TestAsyncServlet") : "비동기 서블릿 등록 실패";
-            assert container.getServletNames().contains("TestSyncServlet") : "동기 서블릿 등록 실패";
+            assert container.getServletNames().contains("HelloWorldAsync") : "Hello World 서블릿 등록 실패";
+            assert container.getServletNames().contains("UserApiAsync") : "User API 서블릿 등록 실패";
 
             // 컨테이너 통계 확인
             HybridMiniServletContainer.ContainerStats stats = container.getStats();
@@ -156,10 +235,13 @@ public class HybridServerTest {
     private static void runPerformanceTests() throws IOException {
         logger.info("=== 성능 테스트 시작 ===");
 
-        HybridServer server = new HybridServer(8084);
+        HybridServer server = new HybridServer(18084);
 
         // 성능 테스트 라우트 설정
         setupPerformanceRoutes(server.getRouter());
+
+        // 로드 테스트 서블릿 등록
+        server.getServletContainer().registerServlet("LoadTest", new LoadTestAsyncServlet(), "/servlet/load");
 
         try {
             server.start();
@@ -210,6 +292,13 @@ public class HybridServerTest {
                             .setHeader("Content-Type", "text/plain")
             );
         });
+
+        // 인덱스 페이지
+        router.addRoute(HttpMethod.GET, "/", (request) -> {
+            return CompletableFuture.completedFuture(
+                    HttpResponse.html(createIndexPage())
+            );
+        });
     }
 
     private static void setupContextSwitchingRoutes(Router router, ContextSwitchingHandler handler) {
@@ -222,7 +311,7 @@ public class HybridServerTest {
                     Thread.currentThread().interrupt();
                 }
                 return "DB Result for " + req.getPath();
-            });
+            }).thenApply(result -> HttpResponse.ok(result)); // String -> HttpResponse 변환
         });
 
         router.addRoute(HttpMethod.GET, "/test/api", (request) -> {
@@ -234,7 +323,7 @@ public class HybridServerTest {
                     Thread.currentThread().interrupt();
                 }
                 return "API Result for " + req.getPath();
-            });
+            }).thenApply(result -> HttpResponse.ok(result)); // String -> HttpResponse 변환
         });
     }
 
@@ -285,48 +374,96 @@ public class HybridServerTest {
         }
     }
 
-    // === 테스트용 서블릿들 ===
-
-    private static class TestAsyncServlet implements MiniAsyncServlet {
-        @Override
-        public void init(MiniContext context) {
-            logger.debug("TestAsyncServlet 초기화");
-        }
-
-        @Override
-        public CompletableFuture<Void> serviceAsync(MiniRequest request, MiniResponse response) {
-            return CompletableFuture.runAsync(() -> {
-                try {
-                    Thread.sleep(50); // 비동기 작업 시뮬레이션
-                    response.setContentType("text/plain");
-                    response.getWriter().write("Async Servlet Test Result");
-                } catch (Exception e) {
-                    logger.error("TestAsyncServlet 오류", e);
-                }
-            });
-        }
-
-        @Override
-        public void destroy() {
-            logger.debug("TestAsyncServlet 파괴");
-        }
-    }
-
-    private static class TestSyncServlet extends MiniServlet {
-        @Override
-        public void init(MiniContext context) {
-            logger.debug("TestSyncServlet 초기화");
-        }
-
-        @Override
-        protected void doGet(MiniRequest request, MiniResponse response) throws Exception {
-            response.setContentType("text/plain");
-            response.getWriter().write("Sync Servlet Test Result");
-        }
-
-        @Override
-        public void destroy() {
-            logger.debug("TestSyncServlet 파괴");
-        }
+    /**
+     * 인덱스 페이지 HTML 생성
+     */
+    private static String createIndexPage() {
+        return "<!DOCTYPE html>\n" +
+                "<html>\n" +
+                "<head>\n" +
+                "    <title>HybridServer Test</title>\n" +
+                "    <style>\n" +
+                "        body { font-family: Arial, sans-serif; margin: 50px; background: #f5f5f5; }\n" +
+                "        .container { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }\n" +
+                "        .endpoint { margin: 10px 0; padding: 15px; background: #e8f4fd; border-left: 4px solid #2196F3; }\n" +
+                "        .method { font-weight: bold; color: #1976D2; }\n" +
+                "        h1 { color: #333; border-bottom: 2px solid #2196F3; padding-bottom: 10px; }\n" +
+                "        h2 { color: #666; margin-top: 30px; }\n" +
+                "        .info { background: #fff3cd; padding: 10px; border: 1px solid #ffeaa7; border-radius: 5px; }\n" +
+                "        pre { background: #f8f9fa; padding: 15px; border-radius: 5px; overflow-x: auto; }\n" +
+                "    </style>\n" +
+                "</head>\n" +
+                "<body>\n" +
+                "    <div class=\"container\">\n" +
+                "        <h1>HybridServer Test Page</h1>\n" +
+                "        \n" +
+                "        <div class=\"info\">\n" +
+                "            <strong>Server Type:</strong> Hybrid (NIO + ThreadPool)<br>\n" +
+                "            <strong>Thread:</strong> " + Thread.currentThread().getName() + "<br>\n" +
+                "            <strong>Timestamp:</strong> " + System.currentTimeMillis() + "<br>\n" +
+                "        </div>\n" +
+                "        \n" +
+                "        <h2>비동기 서블릿 엔드포인트:</h2>\n" +
+                "        \n" +
+                "        <div class=\"endpoint\">\n" +
+                "            <span class=\"method\">GET</span> \n" +
+                "            <a href=\"/hello\">/hello</a> - HelloWorldAsyncServlet\n" +
+                "        </div>\n" +
+                "        \n" +
+                "        <div class=\"endpoint\">\n" +
+                "            <span class=\"method\">GET</span> \n" +
+                "            <a href=\"/api/users\">/api/users</a> - UserApiAsyncServlet\n" +
+                "        </div>\n" +
+                "        \n" +
+                "        <div class=\"endpoint\">\n" +
+                "            <span class=\"method\">GET</span> \n" +
+                "            <a href=\"/static/test.js\">/static/test.js</a> - StaticFileAsyncServlet\n" +
+                "        </div>\n" +
+                "        \n" +
+                "        <div class=\"endpoint\">\n" +
+                "            <span class=\"method\">GET</span> \n" +
+                "            <a href=\"/upload\">/upload</a> - FileUploadAsyncServlet\n" +
+                "        </div>\n" +
+                "        \n" +
+                "        <div class=\"endpoint\">\n" +
+                "            <span class=\"method\">GET</span> \n" +
+                "            <a href=\"/load-test\">/load-test</a> - LoadTestAsyncServlet\n" +
+                "        </div>\n" +
+                "        \n" +
+                "        <h2>컨텍스트 스위칭 테스트:</h2>\n" +
+                "        \n" +
+                "        <div class=\"endpoint\">\n" +
+                "            <span class=\"method\">GET</span> \n" +
+                "            <a href=\"/test/db\">/test/db</a> - DB 작업 시뮬레이션 (100ms)\n" +
+                "        </div>\n" +
+                "        \n" +
+                "        <div class=\"endpoint\">\n" +
+                "            <span class=\"method\">GET</span> \n" +
+                "            <a href=\"/test/api\">/test/api</a> - API 호출 시뮬레이션 (200ms)\n" +
+                "        </div>\n" +
+                "        \n" +
+                "        <h2>테스트 명령어:</h2>\n" +
+                "        <pre>\n" +
+                "# 기본 테스트\n" +
+                "curl http://localhost:8081/hello?name=HybridServer\n" +
+                "\n" +
+                "# JSON API 테스트\n" +
+                "curl http://localhost:8081/api/users\n" +
+                "\n" +
+                "# 사용자 생성 테스트\n" +
+                "curl -X POST http://localhost:8081/api/users \\\n" +
+                "  -H \"Content-Type: application/json\" \\\n" +
+                "  -d '{\"id\":\"1\", \"name\":\"John\", \"email\":\"john@example.com\"}'\n" +
+                "\n" +
+                "# 컨텍스트 스위칭 테스트\n" +
+                "curl http://localhost:8081/test/db\n" +
+                "curl http://localhost:8081/test/api\n" +
+                "\n" +
+                "# 로드 테스트\n" +
+                "for i in {1..10}; do curl http://localhost:8081/load-test & done\n" +
+                "        </pre>\n" +
+                "    </div>\n" +
+                "</body>\n" +
+                "</html>";
     }
 }

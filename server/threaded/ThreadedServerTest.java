@@ -167,6 +167,9 @@ public class ThreadedServerTest {
      * 서블릿 등록
      */
     private static void registerServlets(ThreadedServer server) {
+        // 헬스체크 서블릿 (새로 추가)
+        server.registerServlet("/health", new HealthServlet());
+
         // Hello World 서블릿
         server.registerServlet("/servlet/hello", new HelloWorldServlet());
 
@@ -178,6 +181,12 @@ public class ThreadedServerTest {
 
         // 업로드 서블릿
         server.registerServlet("/upload", new FileUploadServlet());
+
+        // CPU 집약적 작업용 서블릿 (벤치마크용)
+        server.registerServlet("/cpu-intensive", new CpuIntensiveServlet());
+
+        // I/O 시뮬레이션용 서블릿 (벤치마크용)
+        server.registerServlet("/io-simulation", new IoSimulationServlet());
     }
 
     /**

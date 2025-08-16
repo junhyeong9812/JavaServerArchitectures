@@ -277,6 +277,13 @@ public class HttpResponse {
         return status;
     }
 
+    /**
+     * 상태 코드를 정수로 반환 (편의 메서드)
+     */
+    public int getStatusCode() {
+        return status.getCode();
+    }
+
     public HttpHeaders getHeaders() {
         return headers;
     }

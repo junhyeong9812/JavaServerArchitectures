@@ -6,13 +6,15 @@ import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * 스레드 기반 요청 처리기
+ * 스레드 기반 요청 처리기 (수정된 버전)
  * 각 연결을 개별 스레드에서 처리
+ * Router + ServletContainer 둘 다 지원
  */
 public class ThreadedProcessor {
 
     private final ThreadPoolManager threadPoolManager;
     private final Router router;
+    private final ThreadedMiniServletContainer servletContainer;  // ⭐ 추가
     private final RequestHandlerConfig handlerConfig;
 
     // 통계 정보
@@ -21,14 +23,25 @@ public class ThreadedProcessor {
     private final AtomicLong rejectedConnections = new AtomicLong(0);
     private volatile long startTime;
 
+    // ⭐ 기존 생성자 (하위 호환성 유지)
     public ThreadedProcessor(Router router, ThreadPoolConfig threadPoolConfig,
                              RequestHandlerConfig handlerConfig) {
+        this(router, null, threadPoolConfig, handlerConfig);
+    }
+
+    // ⭐ 새로운 생성자 (ServletContainer 포함)
+    public ThreadedProcessor(Router router, ThreadedMiniServletContainer servletContainer,
+                             ThreadPoolConfig threadPoolConfig, RequestHandlerConfig handlerConfig) {
         this.router = router;
+        this.servletContainer = servletContainer;  // ⭐ ServletContainer 저장
         this.handlerConfig = handlerConfig;
         this.threadPoolManager = new ThreadPoolManager(threadPoolConfig);
         this.startTime = System.currentTimeMillis();
 
         System.out.println("[ThreadedProcessor] Initialized with config: " + handlerConfig);
+        if (servletContainer != null) {
+            System.out.println("[ThreadedProcessor] ServletContainer integration enabled");
+        }
     }
 
     /**
@@ -67,7 +80,7 @@ public class ThreadedProcessor {
     }
 
     /**
-     * 연결 처리 작업 래퍼
+     * 연결 처리 작업 래퍼 (수정된 버전)
      */
     private class ConnectionTask implements Runnable {
         private final Socket clientSocket;
@@ -81,11 +94,20 @@ public class ThreadedProcessor {
         @Override
         public void run() {
             try {
-                // 실제 요청 처리
-                BlockingRequestHandler handler = new BlockingRequestHandler(
-                        clientSocket, router, handlerConfig
-                );
-                handler.run();
+                // ServletContainer가 있으면 ServletContainer 우선 사용
+                if (servletContainer != null) {
+                    // ServletContainer 통합 핸들러 사용
+                    BlockingRequestHandler handler = new BlockingRequestHandler(
+                            clientSocket, router, servletContainer, handlerConfig
+                    );
+                    handler.run();
+                } else {
+                    // 기존 Router만 사용
+                    BlockingRequestHandler handler = new BlockingRequestHandler(
+                            clientSocket, router, handlerConfig
+                    );
+                    handler.run();
+                }
 
             } catch (Exception e) {
                 System.err.println("[ThreadedProcessor] Error in connection #" + connectionId +
@@ -153,26 +175,10 @@ public class ThreadedProcessor {
         System.out.println("[ThreadedProcessor] Shutdown completed");
     }
 
-    /**
-     * 활성 연결 수 확인
-     */
-    public long getActiveConnections() {
-        return activeConnections.get();
-    }
-
-    /**
-     * 총 연결 수 확인
-     */
-    public long getTotalConnections() {
-        return totalConnections.get();
-    }
-
-    /**
-     * 거부된 연결 수 확인
-     */
-    public long getRejectedConnections() {
-        return rejectedConnections.get();
-    }
+    // Getters
+    public long getActiveConnections() { return activeConnections.get(); }
+    public long getTotalConnections() { return totalConnections.get(); }
+    public long getRejectedConnections() { return rejectedConnections.get(); }
 
     /**
      * 프로세서 상태 클래스

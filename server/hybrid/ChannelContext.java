@@ -1,6 +1,9 @@
 package server.hybrid;
 
 import server.core.http.HttpResponse;
+import server.core.logging.Logger;
+import server.core.logging.LoggerFactory;
+
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.util.concurrent.ConcurrentHashMap;
@@ -15,48 +18,45 @@ import java.util.concurrent.atomic.AtomicReference;
  * 3. HTTP 요청 완성도 추적
  * 4. 응답 준비 상태 관리
  * 5. 채널별 메타데이터 저장
- *
- * 하이브리드 서버에서의 중요성:
- * - NIO 스레드와 Worker 스레드 간 데이터 공유
- * - HTTP 프로토콜의 스트리밍 특성 처리
- * - Keep-Alive 연결 상태 관리
  */
 public class ChannelContext {
 
+    private static final Logger logger = LoggerFactory.getLogger(ChannelContext.class);
+
     // === 기본 정보 ===
-    private final long connectionId;                    // 연결 고유 ID
-    private final SocketChannel channel;                // NIO 소켓 채널
-    private final long createdTime;                     // 생성 시간
+    private final long connectionId;
+    private final SocketChannel channel;
+    private final long createdTime;
 
     // === HTTP 요청 데이터 ===
-    private final StringBuilder requestBuffer;          // 요청 데이터 누적 버퍼
-    private volatile boolean requestComplete;           // 요청 완성 여부
-    private volatile String httpMethod;                 // HTTP 메서드 (GET, POST 등)
-    private volatile String requestUri;                 // 요청 URI
-    private volatile String httpVersion;                // HTTP 버전
+    private final StringBuilder requestBuffer;
+    private volatile boolean requestComplete;
+    private volatile String httpMethod;
+    private volatile String requestUri;
+    private volatile String httpVersion;
 
     // === HTTP 응답 데이터 ===
-    private final AtomicReference<HttpResponse> response; // 준비된 응답
-    private volatile boolean responseReady;             // 응답 준비 완료 여부
+    private final AtomicReference<HttpResponse> response;
+    private volatile boolean responseReady;
 
     // === 연결 상태 ===
-    private volatile boolean keepAlive;                 // Keep-Alive 여부
-    private volatile long lastActivityTime;             // 마지막 활동 시간
-    private volatile int requestCount;                  // 이 연결에서 처리한 요청 수
+    private volatile boolean keepAlive;
+    private volatile long lastActivityTime;
+    private volatile int requestCount;
 
     // === 속성 저장소 ===
-    private final ConcurrentHashMap<String, Object> attributes; // 커스텀 속성 저장
+    private final ConcurrentHashMap<String, Object> attributes;
 
     // === HTTP 파싱 상태 ===
-    private volatile ParsingState parsingState;         // 현재 파싱 상태
-    private volatile int contentLength;                 // Content-Length 값
-    private volatile int readBodyBytes;                 // 읽은 바디 바이트 수
+    private volatile ParsingState parsingState;
+    private volatile int contentLength;
+    private volatile int readBodyBytes;
 
     /**
      * HTTP 파싱 상태 열거형
      */
     public enum ParsingState {
-        REQUEST_LINE,    // 요청 라인 파싱 중 (GET /path HTTP/1.1)
+        REQUEST_LINE,    // 요청 라인 파싱 중
         HEADERS,         // 헤더 파싱 중
         BODY,            // 바디 파싱 중
         COMPLETE         // 파싱 완료
@@ -64,62 +64,49 @@ public class ChannelContext {
 
     /**
      * ChannelContext 생성자
-     *
-     * @param connectionId 연결 ID
-     * @param channel NIO 소켓 채널
      */
     public ChannelContext(long connectionId, SocketChannel channel) {
         this.connectionId = connectionId;
         this.channel = channel;
         this.createdTime = System.currentTimeMillis();
 
-        // 요청 버퍼 초기화 (초기 용량 1KB)
         this.requestBuffer = new StringBuilder(1024);
         this.requestComplete = false;
 
-        // 응답 관리 초기화
         this.response = new AtomicReference<>();
         this.responseReady = false;
 
-        // 연결 상태 초기화
-        this.keepAlive = true;  // 기본값은 Keep-Alive
+        this.keepAlive = true;
         this.lastActivityTime = createdTime;
         this.requestCount = 0;
 
-        // 속성 저장소 초기화
         this.attributes = new ConcurrentHashMap<>();
 
-        // 파싱 상태 초기화
         this.parsingState = ParsingState.REQUEST_LINE;
         this.contentLength = 0;
         this.readBodyBytes = 0;
+
+        logger.debug("ChannelContext 생성 - 연결 ID: {}", connectionId);
     }
 
     /**
      * 새로운 데이터를 요청 버퍼에 추가
-     * NIO 스레드에서 호출
-     *
-     * @param buffer 읽은 데이터 버퍼
      */
     public synchronized void appendData(ByteBuffer buffer) {
-        // ByteBuffer를 문자열로 변환하여 추가
-        // remaining() - 읽을 수 있는 바이트 수
         byte[] bytes = new byte[buffer.remaining()];
-        buffer.get(bytes);  // 버퍼에서 바이트 배열로 복사
+        buffer.get(bytes);
 
         String data = new String(bytes);
         requestBuffer.append(data);
 
-        // 마지막 활동 시간 업데이트
         updateLastActivity();
-
-        // HTTP 요청 완성도 확인
         checkRequestComplete();
+
+        logger.debug("데이터 추가 - 연결 ID: {}, 크기: {} bytes", connectionId, bytes.length);
     }
 
     /**
      * HTTP 요청 완성도 확인
-     * HTTP 프로토콜 스펙에 따른 파싱
      */
     private void checkRequestComplete() {
         String currentData = requestBuffer.toString();
@@ -135,13 +122,12 @@ public class ChannelContext {
                 checkBody(currentData);
                 break;
             case COMPLETE:
-                // 이미 완료됨
                 break;
         }
     }
 
     /**
-     * 요청 라인 파싱 확인 (GET /path HTTP/1.1)
+     * 요청 라인 파싱 확인
      */
     private void checkRequestLine(String data) {
         int firstLineEnd = data.indexOf("\r\n");
@@ -151,13 +137,15 @@ public class ChannelContext {
             String[] parts = requestLine.split(" ");
 
             if (parts.length >= 3) {
-                this.httpMethod = parts[0];        // GET, POST 등
-                this.requestUri = parts[1];        // /path
-                this.httpVersion = parts[2];       // HTTP/1.1
+                this.httpMethod = parts[0];
+                this.requestUri = parts[1];
+                this.httpVersion = parts[2];
 
-                // 헤더 파싱 단계로 이동
                 this.parsingState = ParsingState.HEADERS;
                 checkHeaders(data);
+
+                logger.debug("요청 라인 파싱 완료 - 연결 ID: {}, {} {} {}",
+                        connectionId, httpMethod, requestUri, httpVersion);
             }
         }
     }
@@ -166,28 +154,24 @@ public class ChannelContext {
      * 헤더 파싱 확인
      */
     private void checkHeaders(String data) {
-        // HTTP 헤더 끝을 나타내는 빈 줄 찾기 (\r\n\r\n)
         int headersEnd = data.indexOf("\r\n\r\n");
 
         if (headersEnd != -1) {
-            // 헤더 부분 추출
             String headers = data.substring(0, headersEnd);
 
-            // Content-Length 헤더 확인
             parseContentLength(headers);
-
-            // Keep-Alive 헤더 확인
             parseKeepAlive(headers);
 
             if (contentLength > 0) {
-                // 바디가 있는 요청 (POST, PUT 등)
                 this.parsingState = ParsingState.BODY;
                 checkBody(data);
             } else {
-                // 바디가 없는 요청 (GET 등) - 파싱 완료
                 this.parsingState = ParsingState.COMPLETE;
                 this.requestComplete = true;
             }
+
+            logger.debug("헤더 파싱 완료 - 연결 ID: {}, Content-Length: {}, Keep-Alive: {}",
+                    connectionId, contentLength, keepAlive);
         }
     }
 
@@ -198,16 +182,17 @@ public class ChannelContext {
         int headersEnd = data.indexOf("\r\n\r\n");
 
         if (headersEnd != -1) {
-            // 헤더 이후의 바디 데이터 길이 계산
-            int bodyStart = headersEnd + 4; // "\r\n\r\n" 길이
+            int bodyStart = headersEnd + 4;
             int currentBodyLength = data.length() - bodyStart;
 
             this.readBodyBytes = currentBodyLength;
 
-            // 바디 완성도 확인
             if (currentBodyLength >= contentLength) {
                 this.parsingState = ParsingState.COMPLETE;
                 this.requestComplete = true;
+
+                logger.debug("바디 파싱 완료 - 연결 ID: {}, 바디 크기: {} bytes",
+                        connectionId, currentBodyLength);
             }
         }
     }
@@ -225,6 +210,7 @@ public class ChannelContext {
                     this.contentLength = Integer.parseInt(value);
                 } catch (NumberFormatException e) {
                     this.contentLength = 0;
+                    logger.warn("잘못된 Content-Length 값 - 연결 ID: {}, 값: {}", connectionId, line);
                 }
                 break;
             }
@@ -262,12 +248,14 @@ public class ChannelContext {
 
     /**
      * 응답 설정
-     * Worker 스레드에서 호출
      */
     public void setResponse(HttpResponse response) {
         this.response.set(response);
         this.responseReady = true;
         updateLastActivity();
+
+        logger.debug("응답 설정 완료 - 연결 ID: {}, 상태: {}",
+                connectionId, response.getStatusCode());
     }
 
     /**
@@ -286,29 +274,26 @@ public class ChannelContext {
 
     /**
      * 새로운 요청을 위한 초기화
-     * Keep-Alive 연결에서 재사용시 호출
      */
     public synchronized void resetForNewRequest() {
-        // 요청 관련 데이터 초기화
-        requestBuffer.setLength(0);  // StringBuilder 내용 클리어
+        requestBuffer.setLength(0);
         requestComplete = false;
         httpMethod = null;
         requestUri = null;
         httpVersion = null;
 
-        // 응답 관련 데이터 초기화
         response.set(null);
         responseReady = false;
 
-        // 파싱 상태 초기화
         parsingState = ParsingState.REQUEST_LINE;
         contentLength = 0;
         readBodyBytes = 0;
 
-        // 요청 카운터 증가
         requestCount++;
-
         updateLastActivity();
+
+        logger.debug("요청 초기화 완료 - 연결 ID: {}, 요청 카운트: {}",
+                connectionId, requestCount);
     }
 
     /**
@@ -320,9 +305,6 @@ public class ChannelContext {
 
     /**
      * 연결 타임아웃 확인
-     *
-     * @param timeoutMs 타임아웃 시간 (밀리초)
-     * @return 타임아웃 여부
      */
     public boolean isTimedOut(long timeoutMs) {
         return (System.currentTimeMillis() - lastActivityTime) > timeoutMs;

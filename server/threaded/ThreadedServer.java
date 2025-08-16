@@ -40,15 +40,16 @@ public class ThreadedServer {
         this.router = router;
         this.config = config;
 
+        this.servletContainer = new ThreadedMiniServletContainer(config.getContextPath());
+
+
         // ThreadedProcessor 초기화
         this.processor = new ThreadedProcessor(
                 router,
+                servletContainer,
                 config.getThreadPoolConfig(),
                 config.getRequestHandlerConfig()
         );
-
-        // 서블릿 컨테이너 초기화
-        this.servletContainer = new ThreadedMiniServletContainer(config.getContextPath());
 
         System.out.println("[ThreadedServer] Initialized on port " + port);
     }
