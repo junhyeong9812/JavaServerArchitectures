@@ -1,6 +1,6 @@
 # JavaServerArchitectures 완전 구현 계획
 
-## 🎯 구현 우선순위
+## 구현 우선순위
 
 ### Phase 1: 핵심 기반 구조 (1주)
 ```
@@ -17,7 +17,7 @@ src/main/java/server/core/
 │   ├── Route.java               ✅ 경로 + 핸들러 매핑
 │   ├── RouteHandler.java        ✅ CompletableFuture 기반
 │   └── RouteMatchResult.java    ✅ 매칭 결과 + 파라미터
-└── mini/           # 🔥 미니 서블릿 API
+└── mini/           # 미니 서블릿 API
     ├── MiniServlet.java         ✅ 핵심 생명주기 (init/service/destroy)
     ├── MiniAsyncServlet.java    ✅ 비동기 처리 지원
     ├── MiniContext.java         ✅ 애플리케이션 설정
