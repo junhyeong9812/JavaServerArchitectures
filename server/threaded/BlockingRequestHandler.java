@@ -8,38 +8,44 @@ import java.net.SocketTimeoutException;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * 블로킹 I/O 요청 핸들러 (수정된 버전)
- * 스레드당 하나의 연결을 처리하는 전통적인 방식
- * Router + ServletContainer 통합 지원
+ * 최적화된 블로킹 I/O 요청 핸들러
+ * 성능 개선: 단순화된 처리 로직, 디버그 오버헤드 제거
  */
 public class BlockingRequestHandler implements Runnable {
 
     private final Socket clientSocket;
     private final Router router;
-    private final ThreadedMiniServletContainer servletContainer;  // ⭐ 추가
+    private final ThreadedMiniServletContainer servletContainer;
     private final RequestHandlerConfig config;
     private final long startTime;
 
-    // ⭐ 기존 생성자 (하위 호환성 유지)
+    // 디버그 관련 변수들 (성능 최적화를 위해 미리 계산)
+    private final boolean debugMode;
+    private final String threadName;
+    private final String clientAddress;
+
+    // 기존 생성자 (하위 호환성 유지)
     public BlockingRequestHandler(Socket clientSocket, Router router, RequestHandlerConfig config) {
         this(clientSocket, router, null, config);
     }
 
-    // ⭐ 새로운 생성자 (ServletContainer 포함)
+    // 새로운 생성자 (ServletContainer 포함)
     public BlockingRequestHandler(Socket clientSocket, Router router,
                                   ThreadedMiniServletContainer servletContainer, RequestHandlerConfig config) {
         this.clientSocket = clientSocket;
         this.router = router;
-        this.servletContainer = servletContainer;  // ⭐ ServletContainer 저장
+        this.servletContainer = servletContainer;
         this.config = config;
         this.startTime = System.currentTimeMillis();
+
+        // 성능 최적화: 반복 호출되는 값들 미리 계산
+        this.debugMode = config.isDebugMode();
+        this.threadName = debugMode ? Thread.currentThread().getName() : null;
+        this.clientAddress = debugMode ? clientSocket.getRemoteSocketAddress().toString() : null;
     }
 
     @Override
     public void run() {
-        String threadName = Thread.currentThread().getName();
-        String clientAddress = clientSocket.getRemoteSocketAddress().toString();
-
         // Keep-Alive 연결 처리
         boolean keepAlive = true;
         int requestCount = 0;
@@ -48,12 +54,9 @@ public class BlockingRequestHandler implements Runnable {
             // 소켓 타임아웃 설정
             clientSocket.setSoTimeout(config.getSocketTimeout());
 
-            if (config.isDebugMode()) {
-                System.out.println("[" + threadName + "] Handling connection from: " + clientAddress);
-                if (servletContainer != null) {
-                    System.out.println("[" + threadName + "] ServletContainer integration enabled");
-                }
-            }
+            // 디버그 로그 (성능 최적화: 조건문 한 번만)
+            logDebug("Handling connection from: " + clientAddress +
+                    (servletContainer != null ? " (ServletContainer enabled)" : ""));
 
             while (keepAlive && requestCount < config.getMaxRequestsPerConnection()) {
                 try {
@@ -64,10 +67,10 @@ public class BlockingRequestHandler implements Runnable {
                     }
 
                     requestCount++;
-                    long requestStartTime = System.currentTimeMillis();
+                    long requestStartTime = debugMode ? System.currentTimeMillis() : 0;
 
-                    // ⭐ 통합 요청 처리 (Router + ServletContainer)
-                    HttpResponse response = processRequest(request);
+                    // 최적화된 요청 처리
+                    HttpResponse response = processRequestOptimized(request);
 
                     // Keep-Alive 확인
                     keepAlive = shouldKeepAlive(request, response) &&
@@ -76,11 +79,11 @@ public class BlockingRequestHandler implements Runnable {
                     // 응답 전송
                     sendResponse(response, clientSocket.getOutputStream());
 
-                    long requestTime = System.currentTimeMillis() - requestStartTime;
-                    if (config.isDebugMode()) {
-                        System.out.println("[" + threadName + "] Request " + requestCount +
-                                " processed in " + requestTime + "ms - " +
-                                request.getMethod() + " " + request.getPath());
+                    // 디버그 로그 (성능 최적화: 필요할 때만 시간 계산)
+                    if (debugMode) {
+                        long requestTime = System.currentTimeMillis() - requestStartTime;
+                        logDebug("Request " + requestCount + " processed in " + requestTime +
+                                "ms - " + request.getMethod() + " " + request.getPath());
                     }
 
                     // Keep-Alive가 아니면 연결 종료
@@ -89,20 +92,18 @@ public class BlockingRequestHandler implements Runnable {
                     }
 
                 } catch (SocketTimeoutException e) {
-                    if (config.isDebugMode()) {
-                        System.out.println("[" + threadName + "] Socket timeout - closing connection");
-                    }
+                    logDebug("Socket timeout - closing connection");
                     break;
                 } catch (IOException e) {
-                    if (config.isDebugMode()) {
-                        System.out.println("[" + threadName + "] I/O error: " + e.getMessage());
-                    }
+                    logDebug("I/O error: " + e.getMessage());
                     break;
                 }
             }
 
         } catch (Exception e) {
-            System.err.println("[" + threadName + "] Error handling connection: " + e.getMessage());
+            // 에러 로그는 항상 출력 (성능보다 안정성 중요)
+            System.err.println("[" + Thread.currentThread().getName() +
+                    "] Error handling connection: " + e.getMessage());
 
             // 500 에러 응답 시도
             try {
@@ -115,16 +116,49 @@ public class BlockingRequestHandler implements Runnable {
         } finally {
             closeConnection();
 
-            long totalTime = System.currentTimeMillis() - startTime;
-            if (config.isDebugMode()) {
-                System.out.println("[" + threadName + "] Connection closed - " +
-                        "total time: " + totalTime + "ms, requests: " + requestCount);
+            // 디버그 로그 (성능 최적화: 필요할 때만 시간 계산)
+            if (debugMode) {
+                long totalTime = System.currentTimeMillis() - startTime;
+                logDebug("Connection closed - total time: " + totalTime +
+                        "ms, requests: " + requestCount);
             }
         }
     }
 
     /**
-     * HTTP 요청 파싱
+     * 최적화된 요청 처리
+     * ServletContainer 우선, 실패시 Router 사용 (fallback 로직 단순화)
+     */
+    private HttpResponse processRequestOptimized(HttpRequest request) {
+        try {
+            // ServletContainer가 있으면 ServletContainer만 사용
+            if (servletContainer != null) {
+                CompletableFuture<HttpResponse> servletFuture = servletContainer.handleRequest(request);
+                if (servletFuture != null) {
+                    HttpResponse servletResponse = servletFuture.get();
+                    if (servletResponse != null) {
+                        logDebug("Request handled by ServletContainer: " + request.getPath());
+                        return servletResponse;
+                    }
+                }
+                // ServletContainer에서 null 반환시 Router로 fallback
+            }
+
+            // Router로 처리
+            HttpResponse routerResponse = router.routeWithMiddlewares(request).get();
+            logDebug("Request handled by Router: " + request.getPath());
+            return routerResponse;
+
+        } catch (Exception e) {
+            // 에러 로그는 성능보다 안정성이 중요하므로 항상 출력
+            System.err.println("Request processing error for " + request.getPath() +
+                    ": " + e.getMessage());
+            return HttpResponse.internalServerError("Request processing failed");
+        }
+    }
+
+    /**
+     * HTTP 요청 파싱 (최적화된 버전)
      */
     private HttpRequest parseRequest(InputStream inputStream) throws IOException {
         try {
@@ -144,68 +178,28 @@ public class BlockingRequestHandler implements Runnable {
             return HttpParser.parseRequest(inputStream);
 
         } catch (IOException e) {
-            if (config.isDebugMode()) {
-                System.out.println("Request parsing failed: " + e.getMessage());
-            }
+            logDebug("Request parsing failed: " + e.getMessage());
             throw e;
         }
     }
 
     /**
-     * 통합 요청 처리 (수정된 버전)
-     * ServletContainer 우선, 없으면 Router 사용
-     */
-    private HttpResponse processRequest(HttpRequest request) {
-        try {
-            // 1. ServletContainer 먼저 시도 (registerHandler로 등록된 핸들러들)
-            if (servletContainer != null) {
-                try {
-                    // CompletableFuture<HttpResponse>를 HttpResponse로 변환
-                    CompletableFuture<HttpResponse> servletFuture = servletContainer.handleRequest(request);
-                    if (servletFuture != null) {
-                        HttpResponse servletResponse = servletFuture.get(); // 동기 변환
-                        if (servletResponse != null) {
-                            if (config.isDebugMode()) {
-                                System.out.println("Request handled by ServletContainer: " + request.getPath());
-                            }
-                            return servletResponse;
-                        }
-                    }
-                } catch (Exception e) {
-                    if (config.isDebugMode()) {
-                        System.out.println("ServletContainer failed, fallback to Router: " + e.getMessage());
-                    }
-                    // ServletContainer 실패시 Router로 fallback
-                }
-            }
-
-            // ⭐ 2. Router로 처리 (기존 방식)
-            HttpResponse routerResponse = router.routeWithMiddlewares(request).get();
-            if (config.isDebugMode()) {
-                System.out.println("Request handled by Router: " + request.getPath());
-            }
-            return routerResponse;
-
-        } catch (Exception e) {
-            System.err.println("Request processing error: " + e.getMessage());
-            return HttpResponse.internalServerError("Request processing failed");
-        }
-    }
-
-    /**
-     * Keep-Alive 여부 결정
+     * Keep-Alive 여부 결정 (최적화된 버전)
      */
     private boolean shouldKeepAlive(HttpRequest request, HttpResponse response) {
         // HTTP/1.1은 기본적으로 Keep-Alive
-        boolean requestKeepAlive = !"close".equalsIgnoreCase(request.getHeader("Connection"));
-        boolean responseKeepAlive = !"close".equalsIgnoreCase(response.getHeaders().get("Connection"));
+        String requestConnection = request.getHeader("Connection");
+        String responseConnection = response.getHeaders().get("Connection");
 
-        return requestKeepAlive && responseKeepAlive &&
-                "HTTP/1.1".equals(request.getVersion());
+        // null 체크와 동시에 비교 (성능 최적화)
+        boolean requestKeepAlive = !"close".equalsIgnoreCase(requestConnection);
+        boolean responseKeepAlive = !"close".equalsIgnoreCase(responseConnection);
+
+        return requestKeepAlive && responseKeepAlive && "HTTP/1.1".equals(request.getVersion());
     }
 
     /**
-     * HTTP 응답 전송
+     * HTTP 응답 전송 (최적화된 버전)
      */
     private void sendResponse(HttpResponse response, OutputStream outputStream) throws IOException {
         try {
@@ -213,13 +207,14 @@ public class BlockingRequestHandler implements Runnable {
             outputStream.flush();
 
         } catch (IOException e) {
+            // 에러는 항상 로그 (안정성 중요)
             System.err.println("Response sending failed: " + e.getMessage());
             throw e;
         }
     }
 
     /**
-     * 연결 종료
+     * 연결 종료 (최적화된 버전)
      */
     private void closeConnection() {
         try {
@@ -229,9 +224,16 @@ public class BlockingRequestHandler implements Runnable {
                 clientSocket.close();
             }
         } catch (IOException e) {
-            if (config.isDebugMode()) {
-                System.out.println("Error closing connection: " + e.getMessage());
-            }
+            logDebug("Error closing connection: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 디버그 로그 헬퍼 메서드 (성능 최적화)
+     */
+    private void logDebug(String message) {
+        if (debugMode) {
+            System.out.println("[" + threadName + "] " + message);
         }
     }
 

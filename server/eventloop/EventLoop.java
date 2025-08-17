@@ -179,11 +179,46 @@ public class EventLoop {
     /**
      * I/O 이벤트 처리
      */
+//    private void processIOEvents() throws IOException {
+//        int readyChannels = selector.select(1000); // 1초 타임아웃
+//
+//        if (readyChannels == 0) {
+//            return; // 타임아웃 또는 wakeup() 호출
+//        }
+//
+//        Set<SelectionKey> selectedKeys = selector.selectedKeys();
+//        Iterator<SelectionKey> keyIterator = selectedKeys.iterator();
+//
+//        while (keyIterator.hasNext()) {
+//            SelectionKey key = keyIterator.next();
+//            keyIterator.remove();
+//
+//            if (!key.isValid()) {
+//                continue;
+//            }
+//
+//            try {
+//                if (key.isAcceptable()) {
+//                    handleAccept(key);
+//                } else if (key.isReadable()) {
+//                    handleRead(key);
+//                } else if (key.isWritable()) {
+//                    handleWrite(key);
+//                }
+//            } catch (Exception e) {
+//                logger.error("Error processing I/O event for key: {}", key, e);
+//                closeKey(key);
+//            }
+//        }
+//    }
+    /**
+     * 또는 processIOEvents 메서드에서 더 자세한 로그
+     */
     private void processIOEvents() throws IOException {
-        int readyChannels = selector.select(1000); // 1초 타임아웃
+        int readyChannels = selector.select(1000);
 
         if (readyChannels == 0) {
-            return; // 타임아웃 또는 wakeup() 호출
+            return;
         }
 
         Set<SelectionKey> selectedKeys = selector.selectedKeys();
@@ -194,6 +229,7 @@ public class EventLoop {
             keyIterator.remove();
 
             if (!key.isValid()) {
+                logger.debug("Invalid key encountered, skipping");
                 continue;
             }
 
@@ -206,7 +242,26 @@ public class EventLoop {
                     handleWrite(key);
                 }
             } catch (Exception e) {
-                logger.error("Error processing I/O event for key: {}", key, e);
+                // 더 상세한 에러 로그
+                SocketChannel channel = null;
+                try {
+                    if (key.channel() instanceof SocketChannel) {
+                        channel = (SocketChannel) key.channel();
+                        logger.error("Error processing I/O event for channel: {} - Operations: readable={}, writable={}, acceptable={} - Error: {}",
+                                channel.getRemoteAddress(),
+                                key.isReadable(),
+                                key.isWritable(),
+                                key.isAcceptable(),
+                                e.getMessage(), e);
+                    } else {
+                        logger.error("Error processing I/O event for non-socket channel: {} - Error: {}",
+                                key.channel(), e.getMessage(), e);
+                    }
+                } catch (Exception ex) {
+                    logger.error("Error getting channel info during error handling: {}", ex.getMessage());
+                    logger.error("Original error was: {}", e.getMessage(), e);
+                }
+
                 closeKey(key);
             }
         }
@@ -230,20 +285,60 @@ public class EventLoop {
     /**
      * 데이터 읽기
      */
+//    private void handleRead(SelectionKey key) throws IOException {
+//        SocketChannel channel = (SocketChannel) key.channel();
+//        ClientSocketEventHandler handler = (ClientSocketEventHandler) key.attachment();
+//
+//        ByteBuffer buffer = ByteBuffer.allocate(8192);
+//        int bytesRead = channel.read(buffer);
+//
+//        if (bytesRead > 0) {
+//            buffer.flip();
+//            handler.onRead(this, channel, buffer);
+//        } else if (bytesRead == -1) {
+//            // 클라이언트가 연결을 닫음
+//            logger.debug("Client closed connection: {}", channel.getRemoteAddress());
+//            handler.onDisconnect(this, channel);
+//            closeKey(key);
+//        }
+//    }
     private void handleRead(SelectionKey key) throws IOException {
         SocketChannel channel = (SocketChannel) key.channel();
         ClientSocketEventHandler handler = (ClientSocketEventHandler) key.attachment();
 
-        ByteBuffer buffer = ByteBuffer.allocate(8192);
-        int bytesRead = channel.read(buffer);
+        try {
+            ByteBuffer buffer = ByteBuffer.allocate(8192);
+            int bytesRead = channel.read(buffer);
 
-        if (bytesRead > 0) {
-            buffer.flip();
-            handler.onRead(this, channel, buffer);
-        } else if (bytesRead == -1) {
-            // 클라이언트가 연결을 닫음
-            logger.debug("Client closed connection: {}", channel.getRemoteAddress());
-            handler.onDisconnect(this, channel);
+            if (bytesRead > 0) {
+                buffer.flip();
+                logger.debug("Read {} bytes from {}", bytesRead, channel.getRemoteAddress());
+                handler.onRead(this, channel, buffer);
+            } else if (bytesRead == -1) {
+                // 클라이언트가 연결을 닫음
+                logger.debug("Client closed connection: {}", channel.getRemoteAddress());
+                handler.onDisconnect(this, channel);
+                closeKey(key);
+            }
+        } catch (Exception e) {
+            logger.error("Error in handleRead for channel: {} - Error: {}",
+                    channel.getRemoteAddress(), e.getMessage(), e);
+
+            // 더 구체적인 에러 정보 출력
+            if (e instanceof java.nio.channels.ClosedChannelException) {
+                logger.debug("Channel was already closed");
+            } else if (e instanceof java.io.IOException) {
+                logger.debug("I/O error during read operation");
+            } else {
+                logger.error("Unexpected error type: {}", e.getClass().getName());
+            }
+
+            // 에러 발생한 연결 정리
+            try {
+                handler.onDisconnect(this, channel);
+            } catch (Exception ex) {
+                logger.error("Error during disconnect handling", ex);
+            }
             closeKey(key);
         }
     }

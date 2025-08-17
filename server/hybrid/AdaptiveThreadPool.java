@@ -8,14 +8,12 @@ import java.util.concurrent.atomic.*;
 import java.util.*;
 
 /**
- * 적응형 스레드풀 - 하이브리드 서버의 핵심 컴포넌트
+ * 적응형 스레드풀 - 하이브리드 서버의 핵심 컴포넌트 (수정된 버전)
  *
- * 기능:
- * 1. 부하에 따른 동적 스레드 수 조정
- * 2. 작업 우선순위 지원
- * 3. 성능 모니터링 및 튜닝
- * 4. 스레드 이름 관리
- * 5. 백프레셔(Backpressure) 처리
+ * 수정사항:
+ * 1. PriorityBlockingQueue 사용 시 모든 작업을 PriorityTask로 래핑
+ * 2. submit() 메서드에서 올바른 우선순위 처리
+ * 3. FutureTask ClassCastException 해결
  */
 public class AdaptiveThreadPool extends ThreadPoolExecutor {
 
@@ -83,15 +81,21 @@ public class AdaptiveThreadPool extends ThreadPoolExecutor {
     }
 
     /**
-     * 작업 제출 (우선순위 지원)
+     * 작업 제출 (우선순위 지원) - 수정된 버전
      */
     public Future<?> submit(Runnable task, int priority) {
         submittedTasks.incrementAndGet();
 
+        // ⭐ 모든 작업을 PriorityTask로 래핑
         PriorityTask priorityTask = new PriorityTask(task, priority);
 
         try {
-            return super.submit(priorityTask);
+            // ⭐ execute()를 직접 호출하여 PriorityTask가 큐에 들어가도록 함
+            execute(priorityTask);
+
+            // ⭐ PriorityTask 자체를 Future로 반환 (Runnable과 Future 인터페이스 구현)
+            return priorityTask.getFuture();
+
         } catch (RejectedExecutionException e) {
             rejectedTasks.incrementAndGet();
             logger.warn("작업 거부 - 스레드풀: {}, 우선순위: {}", poolName, priority);
@@ -100,29 +104,39 @@ public class AdaptiveThreadPool extends ThreadPoolExecutor {
     }
 
     /**
-     * 일반 작업 제출 (기본 우선순위)
+     * 일반 작업 제출 (기본 우선순위) - 수정된 버전
      */
     @Override
     public Future<?> submit(Runnable task) {
-        return submit(task, 0);
+        return submit(task, 0);  // 기본 우선순위 0으로 처리
     }
 
     /**
-     * Callable 작업 제출 (우선순위 지원)
+     * Callable 작업 제출 (우선순위 지원) - 수정된 버전
      */
     public <T> Future<T> submit(Callable<T> task, int priority) {
         submittedTasks.incrementAndGet();
 
+        // ⭐ Callable을 Runnable로 래핑하여 PriorityTask 생성
         FutureTask<T> futureTask = new FutureTask<>(task);
         PriorityTask priorityTask = new PriorityTask(futureTask, priority);
 
         try {
             execute(priorityTask);
-            return futureTask;
+            return futureTask;  // 원래 FutureTask 반환
+
         } catch (RejectedExecutionException e) {
             rejectedTasks.incrementAndGet();
             throw e;
         }
+    }
+
+    /**
+     * ⭐ Callable 작업 제출 (기본 우선순위) - 새로 추가
+     */
+    @Override
+    public <T> Future<T> submit(Callable<T> task) {
+        return submit(task, 0);
     }
 
     /**
@@ -369,34 +383,47 @@ public class AdaptiveThreadPool extends ThreadPoolExecutor {
     }
 
     /**
-     * 우선순위 작업 래퍼 클래스
+     * ⭐ 우선순위 작업 래퍼 클래스 - 수정된 버전
+     * FutureTask와 호환되도록 개선
      */
     private static class PriorityTask implements Runnable, Comparable<PriorityTask> {
         private final Runnable task;
         private final int priority;
         private final long createdTime;
         private volatile long startTime;
+        private final FutureTask<Void> future;  // ⭐ Future 기능 제공
 
         public PriorityTask(Runnable task, int priority) {
             this.task = task;
             this.priority = priority;
             this.createdTime = System.nanoTime();
+            // ⭐ Runnable을 Callable로 래핑하여 Future 생성
+            this.future = new FutureTask<>(() -> {
+                task.run();
+                return null;
+            });
         }
 
         @Override
         public void run() {
-            task.run();
+            future.run();  // ⭐ FutureTask 실행
         }
 
         @Override
         public int compareTo(PriorityTask other) {
+            // 높은 우선순위가 먼저 실행되도록 (역순 정렬)
             int result = Integer.compare(other.priority, this.priority);
 
             if (result == 0) {
+                // 동일한 우선순위일 경우 FIFO (먼저 생성된 것부터)
                 result = Long.compare(this.createdTime, other.createdTime);
             }
 
             return result;
+        }
+
+        public Future<Void> getFuture() {
+            return future;
         }
 
         public int getPriority() { return priority; }
@@ -406,7 +433,7 @@ public class AdaptiveThreadPool extends ThreadPoolExecutor {
     }
 
     /**
-     * 커스텀 스레드 팩토리
+     * 커스텀 스레드 팩토리 (Java 17+ 호환)
      */
     private static class AdaptiveThreadFactory implements ThreadFactory {
         private final String poolName;
@@ -415,8 +442,8 @@ public class AdaptiveThreadPool extends ThreadPoolExecutor {
 
         AdaptiveThreadFactory(String poolName) {
             this.poolName = poolName;
-            SecurityManager s = System.getSecurityManager();
-            this.group = (s != null) ? s.getThreadGroup() : Thread.currentThread().getThreadGroup();
+            // ⭐ SecurityManager 사용하지 않고 현재 스레드 그룹 사용
+            this.group = Thread.currentThread().getThreadGroup();
         }
 
         @Override

@@ -1,0 +1,79 @@
+================================================================================
+                    PARTIAL BENCHMARK RESULTS - 1-BASIC
+================================================================================
+Benchmark Date: 2025-08-17 11:46:43
+Test Phase: 1-basic
+Configuration: BenchmarkConfig{warmup=100, throughput=1000, concurrency=2000, duration=60s, timeout=30s}
+
+------------------------------------------------------------
+TEST: BASIC
+------------------------------------------------------------
+THREADED SERVER:
+   Throughput:       2,173.91 TPS
+   Avg Latency:      2.57 ms
+   Median Latency:   2.44 ms
+   P95 Latency:      3.57 ms
+   P99 Latency:      3.93 ms
+   Min Latency:      1.58 ms
+   Max Latency:      5.51 ms
+   Error Rate:       0.00%
+   Success Rate:     100.00%
+   Concurrent Conn:  10
+   Total Requests:   100
+   Success Requests: 100
+   Duration:         0.05 seconds
+   Overall Score:    95.2/100
+   Stability Score:  84.2/100
+
+HYBRID SERVER:
+   Throughput:       862.07 TPS
+   Avg Latency:      8.71 ms
+   Median Latency:   8.55 ms
+   P95 Latency:      10.99 ms
+   P99 Latency:      11.40 ms
+   Min Latency:      4.80 ms
+   Max Latency:      11.59 ms
+   Error Rate:       0.00%
+   Success Rate:     100.00%
+   Concurrent Conn:  10
+   Total Requests:   100
+   Success Requests: 100
+   Duration:         0.12 seconds
+   Overall Score:    91.4/100
+   Stability Score:  90.7/100
+
+EVENTLOOP SERVER:
+   Throughput:       1,136.36 TPS
+   Avg Latency:      7.28 ms
+   Median Latency:   7.36 ms
+   P95 Latency:      8.58 ms
+   P99 Latency:      9.00 ms
+   Min Latency:      3.58 ms
+   Max Latency:      9.01 ms
+   Error Rate:       0.00%
+   Success Rate:     100.00%
+   Concurrent Conn:  10
+   Total Requests:   100
+   Success Requests: 100
+   Duration:         0.09 seconds
+   Overall Score:    97.7/100
+   Stability Score:  92.9/100
+
+WINNER: EventLoop Server
+
+================================================================================
+                        CURRENT SUMMARY
+================================================================================
+OVERALL                  : Threaded
+basic                    : Threaded
+
+------------------------------------------------------------
+PROGRESS
+------------------------------------------------------------
+Tests Completed: 1/6
+1. BASIC          : COMPLETED
+2. CONCURRENCY    : PENDING
+3. CPU_INTENSIVE  : PENDING
+4. IO_INTENSIVE   : PENDING
+5. MEMORY_PRESSURE: PENDING
+6. ENDURANCE      : PENDING

@@ -1,0 +1,193 @@
+================================================================================
+                    PARTIAL BENCHMARK RESULTS - 3-CPU-INTENSIVE
+================================================================================
+Benchmark Date: 2025-08-17 11:46:54
+Test Phase: 3-cpu-intensive
+Configuration: BenchmarkConfig{warmup=100, throughput=1000, concurrency=2000, duration=60s, timeout=30s}
+
+------------------------------------------------------------
+TEST: BASIC
+------------------------------------------------------------
+THREADED SERVER:
+   Throughput:       2,173.91 TPS
+   Avg Latency:      2.57 ms
+   Median Latency:   2.44 ms
+   P95 Latency:      3.57 ms
+   P99 Latency:      3.93 ms
+   Min Latency:      1.58 ms
+   Max Latency:      5.51 ms
+   Error Rate:       0.00%
+   Success Rate:     100.00%
+   Concurrent Conn:  10
+   Total Requests:   100
+   Success Requests: 100
+   Duration:         0.05 seconds
+   Overall Score:    95.2/100
+   Stability Score:  84.2/100
+
+HYBRID SERVER:
+   Throughput:       862.07 TPS
+   Avg Latency:      8.71 ms
+   Median Latency:   8.55 ms
+   P95 Latency:      10.99 ms
+   P99 Latency:      11.40 ms
+   Min Latency:      4.80 ms
+   Max Latency:      11.59 ms
+   Error Rate:       0.00%
+   Success Rate:     100.00%
+   Concurrent Conn:  10
+   Total Requests:   100
+   Success Requests: 100
+   Duration:         0.12 seconds
+   Overall Score:    91.4/100
+   Stability Score:  90.7/100
+
+EVENTLOOP SERVER:
+   Throughput:       1,136.36 TPS
+   Avg Latency:      7.28 ms
+   Median Latency:   7.36 ms
+   P95 Latency:      8.58 ms
+   P99 Latency:      9.00 ms
+   Min Latency:      3.58 ms
+   Max Latency:      9.01 ms
+   Error Rate:       0.00%
+   Success Rate:     100.00%
+   Concurrent Conn:  10
+   Total Requests:   100
+   Success Requests: 100
+   Duration:         0.09 seconds
+   Overall Score:    97.7/100
+   Stability Score:  92.9/100
+
+WINNER: EventLoop Server
+
+------------------------------------------------------------
+TEST: CONCURRENCY
+------------------------------------------------------------
+THREADED SERVER:
+   Throughput:       8,333.33 TPS
+   Avg Latency:      4.62 ms
+   Median Latency:   3.41 ms
+   P95 Latency:      12.06 ms
+   P99 Latency:      32.37 ms
+   Min Latency:      0.67 ms
+   Max Latency:      44.23 ms
+   Error Rate:       0.00%
+   Success Rate:     100.00%
+   Concurrent Conn:  50
+   Total Requests:   1,000
+   Success Requests: 1,000
+   Duration:         0.12 seconds
+   Overall Score:    90.9/100
+   Stability Score:  70.0/100
+
+HYBRID SERVER:
+   Throughput:       3,086.42 TPS
+   Avg Latency:      14.40 ms
+   Median Latency:   15.03 ms
+   P95 Latency:      16.90 ms
+   P99 Latency:      17.71 ms
+   Min Latency:      1.38 ms
+   Max Latency:      18.19 ms
+   Error Rate:       0.00%
+   Success Rate:     100.00%
+   Concurrent Conn:  50
+   Total Requests:   1,000
+   Success Requests: 1,000
+   Duration:         0.32 seconds
+   Overall Score:    97.5/100
+   Stability Score:  93.1/100
+
+EVENTLOOP SERVER:
+   Throughput:       3,448.28 TPS
+   Avg Latency:      13.01 ms
+   Median Latency:   13.49 ms
+   P95 Latency:      16.11 ms
+   P99 Latency:      17.01 ms
+   Min Latency:      1.09 ms
+   Max Latency:      17.64 ms
+   Error Rate:       0.00%
+   Success Rate:     100.00%
+   Concurrent Conn:  50
+   Total Requests:   1,000
+   Success Requests: 1,000
+   Duration:         0.29 seconds
+   Overall Score:    96.8/100
+   Stability Score:  90.8/100
+
+WINNER: Hybrid Server
+
+------------------------------------------------------------
+TEST: CPU_INTENSIVE
+------------------------------------------------------------
+THREADED SERVER:
+   Throughput:       1,754.39 TPS
+   Avg Latency:      6.41 ms
+   Median Latency:   4.88 ms
+   P95 Latency:      18.32 ms
+   P99 Latency:      21.07 ms
+   Min Latency:      3.05 ms
+   Max Latency:      21.99 ms
+   Error Rate:       0.00%
+   Success Rate:     100.00%
+   Concurrent Conn:  20
+   Total Requests:   200
+   Success Requests: 200
+   Duration:         0.11 seconds
+   Overall Score:    90.8/100
+   Stability Score:  70.0/100
+
+HYBRID SERVER:
+   Throughput:       1,234.57 TPS
+   Avg Latency:      10.54 ms
+   Median Latency:   8.73 ms
+   P95 Latency:      22.21 ms
+   P99 Latency:      25.15 ms
+   Min Latency:      6.14 ms
+   Max Latency:      27.14 ms
+   Error Rate:       0.00%
+   Success Rate:     100.00%
+   Concurrent Conn:  20
+   Total Requests:   200
+   Success Requests: 200
+   Duration:         0.16 seconds
+   Overall Score:    90.7/100
+   Stability Score:  70.0/100
+
+EVENTLOOP SERVER:
+   Throughput:       1,273.89 TPS
+   Avg Latency:      11.05 ms
+   Median Latency:   8.75 ms
+   P95 Latency:      30.06 ms
+   P99 Latency:      32.24 ms
+   Min Latency:      5.72 ms
+   Max Latency:      33.97 ms
+   Error Rate:       0.00%
+   Success Rate:     100.00%
+   Concurrent Conn:  20
+   Total Requests:   200
+   Success Requests: 200
+   Duration:         0.16 seconds
+   Overall Score:    90.7/100
+   Stability Score:  70.0/100
+
+WINNER: Threaded Server
+
+================================================================================
+                        CURRENT SUMMARY
+================================================================================
+OVERALL                  : Threaded
+cpu_intensive            : Threaded
+basic                    : Threaded
+concurrency              : Threaded
+
+------------------------------------------------------------
+PROGRESS
+------------------------------------------------------------
+Tests Completed: 3/6
+1. BASIC          : COMPLETED
+2. CONCURRENCY    : COMPLETED
+3. CPU_INTENSIVE  : COMPLETED
+4. IO_INTENSIVE   : PENDING
+5. MEMORY_PRESSURE: PENDING
+6. ENDURANCE      : PENDING

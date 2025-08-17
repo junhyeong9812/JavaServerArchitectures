@@ -72,14 +72,14 @@ public class SelectorManager {
         try {
             clientChannel.configureBlocking(false);
 
-            // ChannelContext 생성
+            // ChannelContext 생성 (통계 및 관리용)
             long channelId = channelIdGenerator.incrementAndGet();
             ChannelContext context = new ChannelContext(channelId, clientChannel, handler);
             channelContexts.put(clientChannel, context);
 
-            // READ 이벤트로 등록
+            // ⭐ 핵심 수정: handler를 직접 attachment로 설정
             SelectionKey key = clientChannel.register(selector, SelectionKey.OP_READ);
-            key.attach(context);
+            key.attach(handler); // ChannelContext 대신 handler 직접 설정
 
             totalConnections++;
             activeConnections++;

@@ -176,8 +176,20 @@ public class AsyncLogger implements Logger {
         }
 
         String result = format;
-        for (Object arg : args) {
-            result = result.replaceFirst("\\{\\}", String.valueOf(arg));
+        for (int i = 0; i < args.length; i++) {
+            String placeholder = "{}";
+            if (result.contains(placeholder)) {
+                String replacement = args[i] != null ? args[i].toString() : "null";
+
+                // ⭐ 핵심 수정: replaceFirst 대신 indexOf + substring 사용
+                // regex를 사용하지 않는 안전한 방법
+                int index = result.indexOf(placeholder);
+                if (index != -1) {
+                    result = result.substring(0, index) +
+                            replacement +
+                            result.substring(index + placeholder.length());
+                }
+            }
         }
         return result;
     }
